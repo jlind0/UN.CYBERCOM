@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using Nethereum.Web3;
+using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +31,10 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor()
     .AddMicrosoftIdentityConsentHandler();
-
+builder.Services.AddScoped(provider => new Web3(builder.Configuration["Infura:Endpoint"] ?? throw new InvalidDataException(),
+    provider.GetRequiredService<ILogger<Web3>>(), 
+        new AuthenticationHeaderValue("Bearer", 
+            builder.Configuration["Infura:DeveloperKey"] ?? throw new InvalidDataException())));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
