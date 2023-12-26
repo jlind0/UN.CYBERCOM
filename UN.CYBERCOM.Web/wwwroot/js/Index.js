@@ -1,5 +1,4 @@
-﻿const { ethereum } = window;
-window.web3 = new Web3(ethereum);
+﻿window.web3 = new Web3(ethereum);
 window.web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 var dotNetObject = undefined;
 var connectedAccount = undefined;
@@ -8,6 +7,8 @@ const connectWallet = async () => {
         if (!ethereum) return alert('Please install Metamask')
         const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
         connectedAccount = accounts[0];
+        if (connectedAccount !== undefined)
+            setAccount(connectedAccount);
     } catch (error) {
         console.log(JSON.stringify(error))
     }
@@ -40,8 +41,11 @@ const isWalletConnected = async () => {
         reportError(error);
     }
 }
-window.setAccount = function(accountNum) {
-    dotNetObject.invokeMethodAsync("SetAccount", accountNum);
+window.setAccount = function (accountNum) {
+    if (dotNetObject === undefined)
+        setTimeout(() => setAccount(accountNum), 100);
+    else
+        dotNetObject.invokeMethodAsync("SetAccount", accountNum);
 }
 window.SetDotNetObject = async function(dno) {
     dotNetObject = dno;
