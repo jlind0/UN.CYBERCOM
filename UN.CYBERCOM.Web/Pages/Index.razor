@@ -1,9 +1,23 @@
 ﻿@page "/"
+@inject IJSRuntime JSRun
 
 <PageTitle>Index</PageTitle>
-
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
-
-<SurveyPrompt Title="How is Blazor working for you?" />
+@acct
+@code{
+    string acct = null;
+    [JSInvokable("SetAccount")]
+    public async Task SetAccount(string accountNumber)
+    {
+        acct = accountNumber;
+        StateHasChanged();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JSRun.InvokeVoidAsync("SetDotNetObject", dotNetReference);
+        }
+    }
+}
