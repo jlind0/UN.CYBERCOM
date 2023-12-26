@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./node_modules/@openzeppelin/contracts/access/AccessControl.sol";
+import "./node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract DominionDAO is ReentrancyGuard, AccessControl {
     bytes32 private immutable CONTRIBUTOR_ROLE = keccak256("CONTRIBUTOR");
@@ -182,11 +182,11 @@ contract DominionDAO is ReentrancyGuard, AccessControl {
             if (totalContribution >= MIN_STAKEHOLDER_CONTRIBUTION) {
                 stakeholders[msg.sender] = totalContribution;
                 contributors[msg.sender] += msg.value;
-                _setupRole(STAKEHOLDER_ROLE, msg.sender);
-                _setupRole(CONTRIBUTOR_ROLE, msg.sender);
+                _grantRole(STAKEHOLDER_ROLE, msg.sender);
+                _grantRole(CONTRIBUTOR_ROLE, msg.sender);
             } else {
                 contributors[msg.sender] += msg.value;
-                _setupRole(CONTRIBUTOR_ROLE, msg.sender);
+                _grantRole(CONTRIBUTOR_ROLE, msg.sender);
             }
         } else {
             contributors[msg.sender] += msg.value;
