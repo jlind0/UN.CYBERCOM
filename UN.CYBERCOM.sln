@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UN.CYBERCOM.ViewModels", "U
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UN.CYBERCOM.Contracts", "UN.CYBERCOM.Contracts\UN.CYBERCOM.Contracts.csproj", "{5971D904-E9A4-4677-AD2F-71E30D2C4B56}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UN.CYBERCOM.Contracts.Core", "UN.CYBERCOM.Contracts.Core\UN.CYBERCOM.Contracts.Core.csproj", "{26335F7A-8770-457D-840F-B782039A14A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{5971D904-E9A4-4677-AD2F-71E30D2C4B56}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5971D904-E9A4-4677-AD2F-71E30D2C4B56}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5971D904-E9A4-4677-AD2F-71E30D2C4B56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{26335F7A-8770-457D-840F-B782039A14A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26335F7A-8770-457D-840F-B782039A14A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26335F7A-8770-457D-840F-B782039A14A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26335F7A-8770-457D-840F-B782039A14A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
