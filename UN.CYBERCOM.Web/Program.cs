@@ -4,10 +4,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using Nethereum.HdWallet;
 using Nethereum.Web3;
+using Nethereum.Web3.Accounts;
 using System.Net.Http.Headers;
+using System.Numerics;
+using UN.CYBERCOM.ViewModels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,10 +36,14 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor()
     .AddMicrosoftIdentityConsentHandler();
-builder.Services.AddScoped(provider => new Web3(builder.Configuration["Infura:Endpoint"] ?? throw new InvalidDataException(),
-    provider.GetRequiredService<ILogger<Web3>>(), 
-        new AuthenticationHeaderValue("Bearer", 
-            builder.Configuration["Infura:DeveloperKey"] ?? throw new InvalidDataException())));
+builder.Services.AddScoped(provider => 
+{
+    var acct = new Account(builder.Configuration["Infura:SecretKey"] ?? throw new InvalidOperationException());
+    var w3 = new Web3(acct, builder.Configuration["Infura:Endpoint"] ?? throw new InvalidDataException());
+   
+    return w3;
+});
+builder.Services.AddTransient<IndexViewModel>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
