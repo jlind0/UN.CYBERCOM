@@ -48,17 +48,20 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         isMember("Only members can trigger a Tally") 
         external returns (uint256 requestId) 
     {
+        if(proposals[proposalId].duration < block.timestamp){
+            // Will revert if subscription is not set and funded.
+            requestId = COORDINATOR.requestRandomWords(
+            s_keyHash,
+            s_subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
+            );
 
-        // Will revert if subscription is not set and funded.
-        requestId = COORDINATOR.requestRandomWords(
-        s_keyHash,
-        s_subscriptionId,
-        requestConfirmations,
-        callbackGasLimit,
-        numWords
-       );
-
-        requestToProposal[requestId] = proposalId;
+            requestToProposal[requestId] = proposalId;
+        }
+        else
+            revert("Voting has not closed");
     }
     bytes32 public immutable BROKER_ROLE = keccak256("BROKER");
     bytes32 public immutable POWER_ROLE = keccak256("POWER");
@@ -291,6 +294,10 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         i = 0;
         while(i < vs.length){
             CouncilVotes memory cv = cvs[i];
+            Council memory c = councils[cv.councilId];
+            uint colSize = c.groups.length;
+            if(cv.votes.length >= cv.votingParameters.outputCountForGroup && cv.votingParameters.outputCountForGroup > 0)
+                colSize = cv.votingParameters.outputCountForGroup;
             uint targetGroup = 0;
             while(targetGroup < cv.votes.length){
                 uint k = 0;
@@ -301,23 +308,43 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     }
                     k++;
                 }
-                Vote[] memory cgv = new Vote[](m);
+                Vote[] memory cggv = new Vote[](m);
                 k = 0;m = 0;
                 while(k < cv.votes[targetGroup].votes.length){
                     if(cv.votes[targetGroup].votes[k].timestamp != 0){
-                        cgv[m] = cv.votes[targetGroup].votes[k];
+                        cggv[m] = cv.votes[targetGroup].votes[k];
                         m++;
                     }
                     k++;
                 }          
-                cv.votes[targetGroup].votes = cgv;
+                cv.votes[targetGroup].votes = cggv;
                 targetGroup++;
             }
-            if(cv.votes.length >= cv.votingParameters.outputCountForGroup){
-                Council memory c = councils[cv.councilId];
+            
+            CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](colSize);
+            uint[] memory previousIndexs = new uint[](cv.votes.length);
+            if(cv.votingParameters.randomizeByGroup){
+                uint j = 0;
+                while(j < colSize){
+                    uint index = (randomNumber % colSize) + 1;
+                    uint k = 0;
+                    bool doAdd = true;
+                    while(k < j){
+                        if(previousIndexs[k] == index){
+                            doAdd = false;
+                            break;
+                        }
+                        k++;
+                    }
+                    if(doAdd)
+                    {
+                        cgv[j] = cv.votes[index - 1];
+                        previousIndexs[j] = index;
+                    }
+                    j++;
+                }
                 
             }
-
             i++;
         }
         return -1;
