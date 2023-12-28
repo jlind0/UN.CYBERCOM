@@ -214,6 +214,32 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryAsync<HasRoleFunction, bool>(hasRoleFunction, blockParameter);
         }
 
+        public Task<string> PrepareTallyRequestAsync(PrepareTallyFunction prepareTallyFunction)
+        {
+             return ContractHandler.SendRequestAsync(prepareTallyFunction);
+        }
+
+        public Task<TransactionReceipt> PrepareTallyRequestAndWaitForReceiptAsync(PrepareTallyFunction prepareTallyFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(prepareTallyFunction, cancellationToken);
+        }
+
+        public Task<string> PrepareTallyRequestAsync(BigInteger proposalId)
+        {
+            var prepareTallyFunction = new PrepareTallyFunction();
+                prepareTallyFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAsync(prepareTallyFunction);
+        }
+
+        public Task<TransactionReceipt> PrepareTallyRequestAndWaitForReceiptAsync(BigInteger proposalId, CancellationTokenSource cancellationToken = null)
+        {
+            var prepareTallyFunction = new PrepareTallyFunction();
+                prepareTallyFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(prepareTallyFunction, cancellationToken);
+        }
+
         public Task<string> RawFulfillRandomWordsRequestAsync(RawFulfillRandomWordsFunction rawFulfillRandomWordsFunction)
         {
              return ContractHandler.SendRequestAsync(rawFulfillRandomWordsFunction);
