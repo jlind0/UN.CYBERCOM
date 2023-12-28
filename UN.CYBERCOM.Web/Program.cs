@@ -13,6 +13,7 @@ using Nethereum.Web3.Accounts;
 using System.Net.Http.Headers;
 using System.Numerics;
 using UN.CYBERCOM.ViewModels;
+using UN.CYBERCOM.Web.Pages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,7 @@ builder.Services.AddScoped(provider =>
     return w3;
 });
 builder.Services.AddTransient<IndexViewModel>();
+builder.Services.AddTransient<AlertView.AlertViewModel>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Numerics;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UN.CYBERCOM.Contracts.DominionDAO;
@@ -18,8 +19,9 @@ namespace UN.CYBERCOM.ViewModels
 {
     public class IndexViewModel : ReactiveObject, IDisposable
     {
-        private BigInteger contributionAmount = new BigInteger(1);
-        public BigInteger ContributionAmount
+        public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
+        private long contributionAmount = 1;
+        public long ContributionAmount
         {
             get => contributionAmount;
             set => this.RaiseAndSetIfChanged(ref contributionAmount, value);
@@ -60,8 +62,8 @@ namespace UN.CYBERCOM.ViewModels
             get => totalBalance;
             set => this.RaiseAndSetIfChanged(ref totalBalance, value);
         }
-        private BigInteger myBalance;
-        public BigInteger MyBalance
+        private long myBalance;
+        public long MyBalance
         {
             get => myBalance;
             set => this.RaiseAndSetIfChanged(ref myBalance, value);
@@ -71,6 +73,12 @@ namespace UN.CYBERCOM.ViewModels
         {
             get => isDeployed;
             set => this.RaiseAndSetIfChanged(ref isDeployed, value);
+        }
+        private bool isLoading;
+        public bool IsLoading
+        {
+            get => isLoading;
+            set => this.RaiseAndSetIfChanged(ref isLoading, value);
         }
         public IndexViewModel(Web3 web3, IConfiguration config)
         {
@@ -111,11 +119,12 @@ namespace UN.CYBERCOM.ViewModels
         {
             try
             {
+                IsLoading = true;
                 if (!IsDeployed)
                 {
                     var reciept = await DominionDAOService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.DominionDAO.ContractDefinition.DominionDAODeployment()
                     {
-                        
+
                     });
                     ContractAddress = reciept.ContractAddress;
                     IsDeployed = true;
@@ -123,45 +132,63 @@ namespace UN.CYBERCOM.ViewModels
             }
             catch (Exception ex)
             {
-                throw;
+                await Alert.Handle(ex.Message).GetAwaiter();
+
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
         protected async Task DoLoad()
         {
-            if (!IsDeployed)
-                return;
-            if(DaoService != null)
+            try
             {
-                
-                IsStakeHolder = await DaoService.IsStakeholderQueryAsync(new Contracts.DominionDAO.ContractDefinition.IsStakeholderFunction()
+                IsLoading = true;
+                if (!IsDeployed)
+                    return;
+                if (DaoService != null)
                 {
-                    FromAddress = AccountNumber
-                });
-                IsContributor = await DaoService.IsContributorQueryAsync(new Contracts.DominionDAO.ContractDefinition.IsContributorFunction()
+
+                    IsStakeHolder = await DaoService.IsStakeholderQueryAsync(new Contracts.DominionDAO.ContractDefinition.IsStakeholderFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    IsContributor = await DaoService.IsContributorQueryAsync(new Contracts.DominionDAO.ContractDefinition.IsContributorFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    TotalBalance = (long)await DaoService.DaoBalanceQueryAsync(new Contracts.DominionDAO.ContractDefinition.DaoBalanceFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    MyBalance = (long)await DaoService.GetBalanceQueryAsync(new Contracts.DominionDAO.ContractDefinition.GetBalanceFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                }
+                else
                 {
-                    FromAddress = AccountNumber
-                });
-                TotalBalance = (long)await DaoService.DaoBalanceQueryAsync(new Contracts.DominionDAO.ContractDefinition.DaoBalanceFunction()
-                {
-                    FromAddress = AccountNumber
-                });
-                MyBalance = await DaoService.GetBalanceQueryAsync(new Contracts.DominionDAO.ContractDefinition.GetBalanceFunction()
-                {
-                    FromAddress = AccountNumber
-                });
+                    IsStakeHolder = false;
+                    IsContributor = false;
+                    TotalBalance = 0;
+                    MyBalance = 0;
+                }
             }
-            else
+            catch(Exception ex)
             {
-                IsStakeHolder = false;
-                IsContributor = false;
-                TotalBalance = 0;
-                MyBalance = 0;
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
         protected async Task DoContribute()
         {
             try
             {
+                IsLoading = true;
                 if (!IsDeployed)
                     return;
                 if (DaoService != null && ContributionAmount > 0)
@@ -171,12 +198,17 @@ namespace UN.CYBERCOM.ViewModels
                         AmountToSend = ContributionAmount,
                         FromAddress = AccountNumber
                     });
+                    await Task.Delay(10000);
                     await DoLoad();
                 }
             }
             catch (Exception ex)
             {
-                throw;
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
         protected virtual void Dispose(bool disposing)

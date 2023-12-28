@@ -4,29 +4,38 @@
 @inherits ReactiveInjectableComponentBase<IndexViewModel>
 @inject IJSRuntime JSRun
 <PageTitle>Index</PageTitle>
-
+@if(ViewModel != null)
+{
+    <AlertView Alert="ViewModel.Alert"/>
+}
 @if(ViewModel != null && ViewModel.AccountNumber != null)
 {
-    <h3>@ViewModel.AccountNumber</h3>
-    @if(!ViewModel.IsDeployed)
+    @if (ViewModel.IsLoading)
     {
-        <button type="button" @onclick="ViewModel.Deploy.BindCommand<MouseEventArgs>()">Deploy</button>
+        <p>Loading...</p>
     }
     else{
-        <p>@ViewModel.ContractAddress</p>
-        <p><b>Total:</b>@ViewModel.TotalBalance.ToString() | <b>My Balance:</b>@ViewModel.MyBalance.ToString()</p>
-        <p>@if (ViewModel.IsContributor) 
-            {
-                <b>Contributor</b>
-            }
-            &nbsp;        
-            @if (ViewModel.IsStakeHolder) 
-            {
-                <b>Stakeholder</b> 
-            }
-        </p>
-        <p>Contribute: <input type="number" @bind-value="ViewModel.TotalBalance"/>
-            <button type="button" @onclick="ViewModel.Contribute.BindCommand<MouseEventArgs>()">Contribute</button></p>
+        <h3>@ViewModel.AccountNumber</h3>
+        @if(!ViewModel.IsDeployed)
+        {
+            <button type="button" @onclick="ViewModel.Deploy.BindCommand<MouseEventArgs>()">Deploy</button>
+        }
+        else{
+            <p>@ViewModel.ContractAddress</p><button @onclick="ViewModel.Load.BindCommand<MouseEventArgs>()" type="button">Reload</button>
+            <p><b>Total:</b>@ViewModel.TotalBalance | <b>My Balance:</b>@ViewModel.MyBalance</p>
+            <p>@if (ViewModel.IsContributor) 
+                {
+                    <b>Contributor</b>
+                }
+                &nbsp;        
+                @if (ViewModel.IsStakeHolder) 
+                {
+                    <b>Stakeholder</b> 
+                }
+            </p>
+            <p>Contribute: <input type="number" @bind-value="ViewModel.ContributionAmount"/>
+                <button type="button" @onclick="ViewModel.Contribute.BindCommand<MouseEventArgs>()">Contribute</button></p>
+        }
     }
 }
 @code{
