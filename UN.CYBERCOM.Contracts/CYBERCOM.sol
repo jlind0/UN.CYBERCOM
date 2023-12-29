@@ -316,119 +316,167 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             uint colSize = c.groups.length;
             if(cv.votes.length >= cv.votingParameters.outputCountForGroup && cv.votingParameters.outputCountForGroup > 0)
                 colSize = cv.votingParameters.outputCountForGroup;
-            uint targetGroup = 0;
-            while(targetGroup < cv.votes.length){
-                uint k = 0;
-                uint m = 0;
-                while(k < cv.votes[targetGroup].votes.length){
-                    if(cv.votes[targetGroup].votes[k].timestamp != 0){
-                        m++;
-                    }
-                    k++;
-                }
-                Vote[] memory cggv = new Vote[](m);
-                k = 0;m = 0;
-                while(k < cv.votes[targetGroup].votes.length){
-                    if(cv.votes[targetGroup].votes[k].timestamp != 0){
-                        cggv[m] = cv.votes[targetGroup].votes[k];
-                        m++;
-                    }
-                    k++;
-                }          
-                cv.votes[targetGroup].votes = cggv;
-                targetGroup++;
-            }
+            buildGroupVotes(cv);
             uint rdn2 = rdn;
             CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](colSize);
             uint[] memory previousIndexs = new uint[](cv.votes.length);
             bool doAvg = cv.votingParameters.avgVotes;
             if(cv.votingParameters.randomizeByGroup){
                 
+                populateRandomGroupVotes(cv, cgv, previousIndexs, colSize, rdn2);
+            }
+            else
+                populateGroupVote(cv, cgv, colSize, rdn2, doAvg);
+            
+            i++;
+        }
+        populateGroupScore(cvs);
+    }
+    function buildGroupVotes(CouncilVotes memory cv)
+        private pure
+    {
+        uint targetGroup = 0;
+        while(targetGroup < cv.votes.length){
+            uint k = 0;
+            uint m = 0;
+            while(k < cv.votes[targetGroup].votes.length){
+                if(cv.votes[targetGroup].votes[k].timestamp != 0){
+                    m++;
+                }
+                k++;
+            }
+            Vote[] memory cggv = new Vote[](m);
+            k = 0;m = 0;
+            while(k < cv.votes[targetGroup].votes.length){
+                if(cv.votes[targetGroup].votes[k].timestamp != 0){
+                    cggv[m] = cv.votes[targetGroup].votes[k];
+                    m++;
+                }
+                k++;
+            }          
+            cv.votes[targetGroup].votes = cggv;
+            targetGroup++;
+        }
+    }
+    function populateRandomGroupVotes(
+        CouncilVotes memory cv,
+        CouncilGroupVotes[] memory cgv, 
+        uint[] memory previousIndexs,
+        uint colSize,
+        uint rdn2)
+        private pure
+    {
+        uint j = 0;
+        while(j < colSize){
+            uint index = (rdn2 % cv.votes.length) + 1;
+            uint n = 0;
+            bool doAdd = true;
+            while(n < j){
+                if(previousIndexs[n] == index){
+                    doAdd = false;
+                    break;
+                }
+                n++;
+            }
+            if(doAdd)
+            {
+                cgv[j] = cv.votes[index - 1];
+                previousIndexs[j] = index;
+            }
+            j++;
+        }
+
+        }
+    function populateGroupVote(
+        CouncilVotes memory cv, 
+        CouncilGroupVotes[] memory cgv,
+        uint colSize,
+        uint rdn2,
+        bool doAvg)
+        private pure
+    {
+        uint j = 0;
+        while(j < colSize && j < cv.votes.length)
+        {
+            cgv[j] = cv.votes[j]; 
+            j++;
+        }
+        uint r = 0;
+        while(r < cgv.length){
+            uint cvVoteNumerator = cv.votingParameters.voteNumerator;
+            uint cvVoteDenom = cv.votingParameters.voteDenominator;
+            CouncilGroupVotes memory cf = cgv[r];
+            uint groupColSize = cf.votes.length;
+            if(cv.votingParameters.outputCountForMember > 0 && groupColSize > cv.votingParameters.outputCountForMember)
+                groupColSize = cv.votingParameters.outputCountForMember;
+            Vote[] memory vts = new Vote[](groupColSize);
+            applyGroupRandominzation(cv, cf, vts, rdn2, groupColSize);
+            populateGroupVote(vts, cf, cvVoteNumerator, cvVoteDenom, doAvg);
+            r++;
+        }
+    }
+    function applyGroupRandominzation(
+        CouncilVotes memory cv, 
+        CouncilGroupVotes memory cf,
+        Vote[] memory vts,
+        uint rdn2, 
+        uint groupColSize)
+        private pure
+    {
+        if(cv.votingParameters.randomizeByMember){
+                uint[] memory prevIndexs = new uint[](cf.votes.length);
                 uint j = 0;
-                while(j < colSize){
-                    uint index = (rdn2 % cv.votes.length) + 1;
-                    uint n = 0;
+                while(j < groupColSize){
+                    uint index = (rdn2 % cf.votes.length) + 1;
+                    uint m = 0;
                     bool doAdd = true;
-                    while(n < j){
-                        if(previousIndexs[n] == index){
+                    while(m < j){
+                        if(prevIndexs[m] == index){
                             doAdd = false;
                             break;
                         }
-                        n++;
+                        m++;
                     }
                     if(doAdd)
                     {
-                        cgv[j] = cv.votes[index - 1];
-                        previousIndexs[j] = index;
+                        vts[j] = cf.votes[index];
+                        prevIndexs[j] = index;
                     }
                     j++;
                 }
             }
+    }
+    function populateGroupVote(Vote[] memory vts, 
+        CouncilGroupVotes memory cf, 
+        uint cvVoteNumerator, 
+        uint cvVoteDenom,
+        bool doAvg)
+        private pure
+    {
+        uint g = 0;
+        int rs = 0;
+        int[] memory rrs = new int[](vts.length);
+        while(g < vts.length){
+            int v = 0;
+            if(vts[g].voteCasted)
+                v = 1;
             else
-            {
-                uint j = 0;
-                while(j < colSize && j < cv.votes.length)
-                {
-                    cgv[j] = cv.votes[j]; 
-                    j++;
-                }
-            }
-            uint r = 0;
-            while(r < cgv.length){
-                uint cvVoteNumerator = cv.votingParameters.voteNumerator;
-                uint cvVoteDenom = cv.votingParameters.voteDenominator;
-                CouncilGroupVotes memory cf = cgv[r];
-                uint groupColSize = cf.votes.length;
-                if(cv.votingParameters.outputCountForMember > 0 && groupColSize > cv.votingParameters.outputCountForMember)
-                    groupColSize = cv.votingParameters.outputCountForMember;
-                Vote[] memory vts = new Vote[](groupColSize);
-                if(cv.votingParameters.randomizeByMember){
-                    uint[] memory prevIndexs = new uint[](cf.votes.length);
-                    uint j = 0;
-                    while(j < groupColSize){
-                        uint index = (rdn2 % cf.votes.length) + 1;
-                        uint m = 0;
-                        bool doAdd = true;
-                        while(m < j){
-                            if(prevIndexs[m] == index){
-                                doAdd = false;
-                                break;
-                            }
-                            m++;
-                        }
-                        if(doAdd)
-                        {
-                            vts[j] = cf.votes[index];
-                            prevIndexs[j] = index;
-                        }
-                        j++;
-                    }
-                    
-                }
-                uint g = 0;
-                int rs = 0;
-                int[] memory rrs = new int[](vts.length);
-                while(g < vts.length){
-                    int v = 0;
-                    if(vts[g].voteCasted)
-                        v = 1;
-                    else
-                        v = -1;
-                    int rr = multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
-                    rs += rr;
-                    rrs[g] = rr;
-                    g++;
-                }
-                int ss = cf.score;
-                if(doAvg)
-                    ss += calculateAverage(rrs);
-                else
-                    ss+= rs;
-                cf.score = ss;
-                r++;
-            }
-            i++;
+                v = -1;
+            int rr = multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
+            rs += rr;
+            rrs[g] = rr;
+            g++;
         }
+        int ss = cf.score;
+        if(doAvg)
+            ss += calculateAverage(rrs);
+        else
+            ss+= rs;
+        cf.score = ss;
+    }
+    function populateGroupScore(CouncilVotes[] memory cvs)
+        private pure
+    {
         uint y = 0;
         int result = 0;
         while(y < cvs.length){
