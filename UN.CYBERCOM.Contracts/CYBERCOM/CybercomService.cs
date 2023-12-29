@@ -214,6 +214,21 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryAsync<HasRoleFunction, bool>(hasRoleFunction, blockParameter);
         }
 
+        public Task<BigInteger> MultiplyQueryAsync(MultiplyFunction multiplyFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<MultiplyFunction, BigInteger>(multiplyFunction, blockParameter);
+        }
+
+        
+        public Task<BigInteger> MultiplyQueryAsync(BigInteger a, BigInteger b, BlockParameter blockParameter = null)
+        {
+            var multiplyFunction = new MultiplyFunction();
+                multiplyFunction.A = a;
+                multiplyFunction.B = b;
+            
+            return ContractHandler.QueryAsync<MultiplyFunction, BigInteger>(multiplyFunction, blockParameter);
+        }
+
         public Task<string> PrepareTallyRequestAsync(PrepareTallyFunction prepareTallyFunction)
         {
              return ContractHandler.SendRequestAsync(prepareTallyFunction);

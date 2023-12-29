@@ -94,10 +94,10 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         bool randomizeByMember;
         uint outputCountForGroup;
         uint outputCountForMember;
-        int32 voteDenominator;
-        int32 voteNumerator;
-        int32 sumDenominator;
-        int32 sumNumerator;
+        uint voteDenominator;
+        uint voteNumerator;
+        uint sumDenominator;
+        uint sumNumerator;
         bool avgVotes;
     }
     uint totalMembershipProposals;
@@ -322,13 +322,13 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                 cv.votes[targetGroup].votes = cggv;
                 targetGroup++;
             }
-            
+            uint rdn2 = rdn;
             CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](colSize);
             uint[] memory previousIndexs = new uint[](cv.votes.length);
             if(cv.votingParameters.randomizeByGroup){
                 uint j = 0;
                 while(j < colSize){
-                    uint index = (rdn % cv.votes.length) + 1;
+                    uint index = (rdn2 % cv.votes.length) + 1;
                     uint n = 0;
                     bool doAdd = true;
                     while(n < j){
@@ -357,6 +357,8 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             }
             uint r = 0;
             while(r < cgv.length){
+                uint cvVoteNumerator = cv.votingParameters.voteNumerator;
+                uint cvVoteDenom = cv.votingParameters.voteDenominator;
                 CouncilGroupVotes memory cf = cgv[r];
                 uint groupColSize = cf.votes.length;
                 if(cv.votingParameters.outputCountForMember > 0 && groupColSize > cv.votingParameters.outputCountForMember)
@@ -366,7 +368,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     uint[] memory prevIndexs = new uint[](cf.votes.length);
                     uint j = 0;
                     while(j < groupColSize){
-                        uint index = (rdn % cf.votes.length) + 1;
+                        uint index = (rdn2 % cf.votes.length) + 1;
                         uint m = 0;
                         bool doAdd = true;
                         while(m < j){
@@ -385,6 +387,18 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     }
                     
                 }
+                uint g = 0;
+                int result = 0;
+                while(g < vts.length){
+                    int v = 0;
+                    if(vts[g].voteCasted)
+                        v = 1;
+                    else
+                        v = -1;
+                    result += multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
+                    g++;
+                }
+                
                 r++;
             }
 
@@ -392,6 +406,13 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         }
         
         return -1;
+    }
+    function multiply(uint a, int b) public pure returns (int) {
+        if (b < 0) {
+            return -int(a) * b;
+        } else {
+            return int(a) * b;
+        }
     }
     function getIndexForCouncil(bytes32 id)
         private view returns(uint)
