@@ -18,9 +18,27 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     uint16 requestConfirmations = 3;
     uint32 numWords =  1;
     mapping(uint => uint) requestToProposal;
+    function tallyScore(CouncilVotes[] memory tally) 
+        private pure returns(int)
+    {
+        int score = 0;
+        uint i = 0;
+        while(i < tally.length){
+            CouncilVotes memory cv = tally[i];
+            uint j = 0;
+            while(j < cv.votes.length){
+                score += cv.votes[j].score;
+                j++;
+            }
+            i++;
+        }
+        return score;
+    }
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
         Proposal storage proposal = proposals[requestToProposal[requestId]];
-        if(tallyVotes(proposal.id, randomWords[0]) > 0){
+        CouncilVotes[] memory tally = tallyVotes(proposal.id, randomWords[0]);
+        int score = tallyScore(tally);
+        if(score > 0){
             proposal.status = ApprovalStatus.Approved;
             if(proposal.proposalType == ProposalTypes.Membership){
                 MembershipProposal storage mp = membershipProposals[proposalToMembershipProp[proposal.id]];
@@ -249,6 +267,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     struct CouncilGroupVotes{
         uint groupId;
         Vote[] votes;
+        int score;
     }
     struct TallyResult{
         CouncilVotes[] acceptedVotes;
@@ -257,11 +276,11 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     }
     mapping(uint => TallyResult) proposalTallyResults;
     function tallyVotes(uint proposalId, uint randomNumber) 
-        private view returns(int)
+        private view returns(CouncilVotes[] memory cvs)
     {
         Vote[] memory vs = proposalVotes[proposalId];
         uint i = 0;
-        CouncilVotes[] memory cvs = new CouncilVotes[](5);
+        cvs = new CouncilVotes[](5);
         while(i < vs.length){
             Vote memory vt = vs[i];
             Council memory council = nationsCouncil[vt.member];
@@ -275,7 +294,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             uint groupVotes = 0;
             while(groupVotes < cv.votes.length)
             {
-                cv.votes[groupVotes] = CouncilGroupVotes(council.groups[groupVotes].id, new Vote[](vs.length));
+                cv.votes[groupVotes] = CouncilGroupVotes(council.groups[groupVotes].id, new Vote[](vs.length), 0);
                 groupVotes++;
             }
             uint targetGroup = 0;
@@ -398,14 +417,12 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     result += multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
                     g++;
                 }
-                
+                cf.score = result;
                 r++;
             }
 
             i++;
         }
-        
-        return -1;
     }
     function multiply(uint a, int b) public pure returns (int) {
         if (b < 0) {
