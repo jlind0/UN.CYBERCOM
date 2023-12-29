@@ -25,11 +25,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         uint i = 0;
         while(i < tally.length){
             CouncilVotes memory cv = tally[i];
-            uint j = 0;
-            while(j < cv.votes.length){
-                score += cv.votes[j].score;
-                j++;
-            }
+            score += cv.score;
             i++;
         }
         return score;
@@ -263,6 +259,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         bytes32 councilId;
         VotingParameters votingParameters;
         CouncilGroupVotes[] votes;
+        int score;
     }
     struct CouncilGroupVotes{
         uint groupId;
@@ -407,21 +404,35 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     
                 }
                 uint g = 0;
-                int result = 0;
+                int rs = 0;
                 while(g < vts.length){
                     int v = 0;
                     if(vts[g].voteCasted)
                         v = 1;
                     else
                         v = -1;
-                    result += multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
+                    rs += multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
                     g++;
                 }
-                cf.score = result;
+                cf.score = rs;
                 r++;
             }
-
             i++;
+        }
+        uint y = 0;
+        int result = 0;
+        while(y < cvs.length){
+            uint g = 0;
+            CouncilVotes memory cv = cvs[y];
+            while(g < cv.votes.length){
+                CouncilGroupVotes memory cgv = cv.votes[g];
+                int v = cgv.score;
+                result += multiply(Math.mulDiv(100000, cv.votingParameters.voteNumerator, cv.votingParameters.voteDenominator), v);
+                g++;
+            }
+            cv.score += result;
+            cvs[y] = cv;
+            y++;
         }
     }
     function multiply(uint a, int b) public pure returns (int) {
