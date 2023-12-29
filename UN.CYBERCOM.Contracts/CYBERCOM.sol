@@ -341,7 +341,9 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             uint rdn2 = rdn;
             CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](colSize);
             uint[] memory previousIndexs = new uint[](cv.votes.length);
+            bool doAvg = cv.votingParameters.avgVotes;
             if(cv.votingParameters.randomizeByGroup){
+                
                 uint j = 0;
                 while(j < colSize){
                     uint index = (rdn2 % cv.votes.length) + 1;
@@ -405,16 +407,24 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                 }
                 uint g = 0;
                 int rs = 0;
+                int[] memory rrs = new int[](vts.length);
                 while(g < vts.length){
                     int v = 0;
                     if(vts[g].voteCasted)
                         v = 1;
                     else
                         v = -1;
-                    rs += multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
+                    int rr = multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
+                    rs += rr;
+                    rrs[g] = rr;
                     g++;
                 }
-                cf.score = rs;
+                int ss = cf.score;
+                if(doAvg)
+                    ss += calculateAverage(rrs);
+                else
+                    ss+= rs;
+                cf.score = ss;
                 r++;
             }
             i++;
@@ -424,16 +434,33 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         while(y < cvs.length){
             uint g = 0;
             CouncilVotes memory cv = cvs[y];
+            int[] memory results = new int[](cv.votes.length);
+
             while(g < cv.votes.length){
                 CouncilGroupVotes memory cgv = cv.votes[g];
                 int v = cgv.score;
-                result += multiply(Math.mulDiv(100000, cv.votingParameters.voteNumerator, cv.votingParameters.voteDenominator), v);
+                int rr = multiply(Math.mulDiv(100000, cv.votingParameters.voteNumerator, cv.votingParameters.voteDenominator), v);
+                results[g] = rr;
+                result += rr;
                 g++;
             }
-            cv.score += result;
+            if(cv.votingParameters.avgVotes)
+                cv.score += calculateAverage(results);
+            else
+                cv.score += result;
             cvs[y] = cv;
             y++;
         }
+    }
+    function calculateAverage(int[] memory numbers) public pure returns (int) {
+        require(numbers.length > 0, "Array is empty");
+
+        int sum = 0;
+        for (uint i = 0; i < numbers.length; i++) {
+            sum += numbers[i];
+        }
+
+        return sum / int(numbers.length);
     }
     function multiply(uint a, int b) public pure returns (int) {
         if (b < 0) {

@@ -114,6 +114,20 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryAsync<PowerRoleFunction, byte[]>(null, blockParameter);
         }
 
+        public Task<BigInteger> CalculateAverageQueryAsync(CalculateAverageFunction calculateAverageFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<CalculateAverageFunction, BigInteger>(calculateAverageFunction, blockParameter);
+        }
+
+        
+        public Task<BigInteger> CalculateAverageQueryAsync(List<BigInteger> numbers, BlockParameter blockParameter = null)
+        {
+            var calculateAverageFunction = new CalculateAverageFunction();
+                calculateAverageFunction.Numbers = numbers;
+            
+            return ContractHandler.QueryAsync<CalculateAverageFunction, BigInteger>(calculateAverageFunction, blockParameter);
+        }
+
         public Task<GetApprovedMembershipRequestsOutputDTO> GetApprovedMembershipRequestsQueryAsync(GetApprovedMembershipRequestsFunction getApprovedMembershipRequestsFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetApprovedMembershipRequestsFunction, GetApprovedMembershipRequestsOutputDTO>(getApprovedMembershipRequestsFunction, blockParameter);
