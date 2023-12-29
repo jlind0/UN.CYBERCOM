@@ -259,7 +259,6 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     function tallyVotes(uint proposalId, uint randomNumber) 
         private view returns(int)
     {
-        Proposal memory proposal = proposals[proposalId];
         Vote[] memory vs = proposalVotes[proposalId];
         uint i = 0;
         CouncilVotes[] memory cvs = new CouncilVotes[](5);
@@ -292,7 +291,10 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             i++;
         }
         i = 0;
+        
         while(i < vs.length){
+
+            uint rdn = randomNumber;
             CouncilVotes memory cv = cvs[i];
             Council memory c = councils[cv.councilId];
             uint colSize = c.groups.length;
@@ -326,15 +328,15 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
             if(cv.votingParameters.randomizeByGroup){
                 uint j = 0;
                 while(j < colSize){
-                    uint index = (randomNumber % colSize) + 1;
-                    uint k = 0;
+                    uint index = (rdn % cv.votes.length) + 1;
+                    uint n = 0;
                     bool doAdd = true;
-                    while(k < j){
-                        if(previousIndexs[k] == index){
+                    while(n < j){
+                        if(previousIndexs[n] == index){
                             doAdd = false;
                             break;
                         }
-                        k++;
+                        n++;
                     }
                     if(doAdd)
                     {
@@ -343,10 +345,52 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                     }
                     j++;
                 }
-                
             }
+            else
+            {
+                uint j = 0;
+                while(j < colSize && j < cv.votes.length)
+                {
+                    cgv[j] = cv.votes[j]; 
+                    j++;
+                }
+            }
+            uint r = 0;
+            while(r < cgv.length){
+                CouncilGroupVotes memory cf = cgv[r];
+                uint groupColSize = cf.votes.length;
+                if(cv.votingParameters.outputCountForMember > 0 && groupColSize > cv.votingParameters.outputCountForMember)
+                    groupColSize = cv.votingParameters.outputCountForMember;
+                Vote[] memory vts = new Vote[](groupColSize);
+                if(cv.votingParameters.randomizeByMember){
+                    uint[] memory prevIndexs = new uint[](cf.votes.length);
+                    uint j = 0;
+                    while(j < groupColSize){
+                        uint index = (rdn % cf.votes.length) + 1;
+                        uint m = 0;
+                        bool doAdd = true;
+                        while(m < j){
+                            if(prevIndexs[m] == index){
+                                doAdd = false;
+                                break;
+                            }
+                            m++;
+                        }
+                        if(doAdd)
+                        {
+                            vts[j] = cf.votes[index];
+                            prevIndexs[j] = index;
+                        }
+                        j++;
+                    }
+                    
+                }
+                r++;
+            }
+
             i++;
         }
+        
         return -1;
     }
     function getIndexForCouncil(bytes32 id)
