@@ -151,6 +151,26 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilFunction, GetCouncilOutputDTO>(getCouncilFunction, blockParameter);
         }
 
+        public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(GetCouncilsFunction getCouncilsFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(getCouncilsFunction, blockParameter);
+        }
+
+        public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
+        }
+
+        public Task<GetNationsOutputDTO> GetNationsQueryAsync(GetNationsFunction getNationsFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetNationsFunction, GetNationsOutputDTO>(getNationsFunction, blockParameter);
+        }
+
+        public Task<GetNationsOutputDTO> GetNationsQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetNationsFunction, GetNationsOutputDTO>(null, blockParameter);
+        }
+
         public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(GetPendingMembershipRequestsFunction getPendingMembershipRequestsFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetPendingMembershipRequestsFunction, GetPendingMembershipRequestsOutputDTO>(getPendingMembershipRequestsFunction, blockParameter);
@@ -159,6 +179,19 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
         public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetPendingMembershipRequestsFunction, GetPendingMembershipRequestsOutputDTO>(null, blockParameter);
+        }
+
+        public Task<GetProposalVotesOutputDTO> GetProposalVotesQueryAsync(GetProposalVotesFunction getProposalVotesFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetProposalVotesFunction, GetProposalVotesOutputDTO>(getProposalVotesFunction, blockParameter);
+        }
+
+        public Task<GetProposalVotesOutputDTO> GetProposalVotesQueryAsync(BigInteger proposalId, BlockParameter blockParameter = null)
+        {
+            var getProposalVotesFunction = new GetProposalVotesFunction();
+                getProposalVotesFunction.ProposalId = proposalId;
+            
+            return ContractHandler.QueryDeserializingToObjectAsync<GetProposalVotesFunction, GetProposalVotesOutputDTO>(getProposalVotesFunction, blockParameter);
         }
 
         public Task<GetRejectedMembershipRequestsOutputDTO> GetRejectedMembershipRequestsQueryAsync(GetRejectedMembershipRequestsFunction getRejectedMembershipRequestsFunction, BlockParameter blockParameter = null)
@@ -241,6 +274,34 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
                 multiplyFunction.B = b;
             
             return ContractHandler.QueryAsync<MultiplyFunction, BigInteger>(multiplyFunction, blockParameter);
+        }
+
+        public Task<string> PerformVoteRequestAsync(PerformVoteFunction performVoteFunction)
+        {
+             return ContractHandler.SendRequestAsync(performVoteFunction);
+        }
+
+        public Task<TransactionReceipt> PerformVoteRequestAndWaitForReceiptAsync(PerformVoteFunction performVoteFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(performVoteFunction, cancellationToken);
+        }
+
+        public Task<string> PerformVoteRequestAsync(BigInteger proposalId, bool voteCasted)
+        {
+            var performVoteFunction = new PerformVoteFunction();
+                performVoteFunction.ProposalId = proposalId;
+                performVoteFunction.VoteCasted = voteCasted;
+            
+             return ContractHandler.SendRequestAsync(performVoteFunction);
+        }
+
+        public Task<TransactionReceipt> PerformVoteRequestAndWaitForReceiptAsync(BigInteger proposalId, bool voteCasted, CancellationTokenSource cancellationToken = null)
+        {
+            var performVoteFunction = new PerformVoteFunction();
+                performVoteFunction.ProposalId = proposalId;
+                performVoteFunction.VoteCasted = voteCasted;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(performVoteFunction, cancellationToken);
         }
 
         public Task<string> PrepareTallyRequestAsync(PrepareTallyFunction prepareTallyFunction)
