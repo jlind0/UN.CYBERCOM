@@ -1,0 +1,91 @@
+﻿@page "/cybercom"
+@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+@using System.Threading;
+@inherits ReactiveInjectableComponentBase<CybercomViewModel>
+@inject IJSRuntime JSRun
+<PageTitle>UN(official) CYBERCOM</PageTitle>
+<h3>UN(official) CYBERCOM</h3>
+@if (ViewModel != null)
+{
+    <AlertView Alert="ViewModel.Alert" />
+    @if(ViewModel.AccountNumber != null)
+    {
+        <h5>@ViewModel.AccountNumber</h5>
+        <h5>@ViewModel.ContractAddress</h5>
+        @if (ViewModel.IsLoading)
+        {
+            <p>Loading...</p>
+        }
+        else if (!ViewModel.IsDeployed)
+        {
+            <button type="button" @onclick="ViewModel.Deploy.BindCommand<MouseEventArgs>()">Deploy</button>
+        }
+        else
+        {
+            <p>@ViewModel.ContractAddress</p>
+            <button @onclick="ViewModel.Load.BindCommand<MouseEventArgs>()" type="button">Reload</button>
+            <TelerikDropDownList TItem="CouncilViewModel" TValue="string" Data="ViewModel.Councils" TextField="Name" @bind-Value="ViewModel.SelectedCouncilRole" ValueField="Role"/>
+            @if (ViewModel.SelectedCouncil != null)
+            {
+                <TelerikDropDownList TItem="CouncilGroupViewModel" TValue="string" Data="ViewModel.SelectedCouncil.Groups" TextField="Name" ValueField="Id" @bind-Value="ViewModel.SelectedCouncil.SelectedGroupId" />
+                @if (!string.IsNullOrEmpty(ViewModel.SelectedCouncil.SelectedGroupId))
+                {
+                    <p>
+                        <label>Address</label>
+                        <TelerikTextBox @bind-Value="ViewModel.NewMemberAddress" />
+                    </p>
+
+                    <p>
+                        <label>Nation Name</label>
+                        <TelerikTextBox @bind-Value="ViewModel.NewNationName" />
+                    </p>
+                    <button @onclick="ViewModel.MembershipRequest.BindCommand<MouseEventArgs>()" type="button">Request Membership</button>
+                }
+            }
+            <TelerikGrid Data="ViewModel.Nations">
+                <GridColumns>
+                    <GridColumn Field="@nameof(Nation.Id)" Title="Address"/>
+                    <GridColumn Field="@nameof(Nation.Name)" Title="Name" />
+                </GridColumns>
+            </TelerikGrid>
+        }
+    }
+}
+@code {
+    protected SemaphoreSlim Slim { get; } = new SemaphoreSlim(0);
+    protected string? SignedData{ get; set; }
+    protected override Task OnInitializedAsync()
+    {
+        ViewModel.SignMembershipRequest.RegisterHandler(async data =>
+        {
+            await JSRun.InvokeVoidAsync("signTransaction", ViewModel.AccountNumber, ViewModel.ContractAddress, data.Input, nameof(CallMemberRequestFin));
+            await Slim.WaitAsync();
+            data.SetOutput(SignedData ?? throw new InvalidDataException());
+        });
+        return base.OnInitializedAsync();
+    }
+    [JSInvokable("SetAccount")]
+    public async Task SetAccount(string accountNumber)
+    {
+        ViewModel.AccountNumber = accountNumber;
+    }
+    [JSInvokable("CallMemberRequestFin")]
+    public Task CallMemberRequestFin(string signedData)
+    {
+        SignedData = signedData;
+        Slim.Release();
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JSRun.InvokeVoidAsync("SetDotNetObject", dotNetReference);
+        }
+    }
+}

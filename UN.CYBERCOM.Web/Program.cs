@@ -45,6 +45,7 @@ builder.Services.AddScoped(provider =>
     return w3;
 });
 builder.Services.AddTransient<IndexViewModel>();
+builder.Services.AddTransient<CybercomViewModel>();
 builder.Services.AddTransient<AlertView.AlertViewModel>();
 var app = builder.Build();
 

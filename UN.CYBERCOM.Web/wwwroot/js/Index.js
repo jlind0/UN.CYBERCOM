@@ -13,9 +13,11 @@ const connectWallet = async () => {
         console.log(JSON.stringify(error))
     }
 }
+let web3;
 const isWalletConnected = async () => {
     try {
         if (!ethereum) return alert('Please install Metamask');
+        web3 = new Web3(window.ethereum);
         const accounts = await ethereum.request({ method: 'eth_accounts' });
 
         window.ethereum.on('chainChanged', (chainId) => {
@@ -40,6 +42,21 @@ const isWalletConnected = async () => {
     } catch (error) {
         reportError(error);
     }
+}
+window.signTransaction = async function(fromAddress,contractAddress, tranData, rtnFunction){
+    
+    const tx = {
+        from: fromAddress,
+        to: contractAddress,
+        data: tranData,
+        value: 0,
+        gas: 5000000
+    };
+    const signedTx = await window.ethereum.request({
+        method: 'eth_signTransaction',
+        params: [ tx],
+    });
+    dotNetObject.invokeMethodAsync(rtnFunction, signedTx);
 }
 window.setAccount = function (accountNum) {
     if (dotNetObject === undefined)
