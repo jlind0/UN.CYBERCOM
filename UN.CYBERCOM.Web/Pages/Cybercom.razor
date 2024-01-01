@@ -44,10 +44,63 @@
                     <button @onclick="ViewModel.MembershipRequest.BindCommand<MouseEventArgs>()" type="button">Request Membership</button>
                 }
             }
+            <h2>Nations</h2>
             <TelerikGrid Data="ViewModel.Nations">
                 <GridColumns>
                     <GridColumn Field="@nameof(Nation.Id)" Title="Address"/>
                     <GridColumn Field="@nameof(Nation.Name)" Title="Name" />
+                </GridColumns>
+            </TelerikGrid>
+            <h2>Pending Membership Requests</h2>
+            <TelerikGrid Data="ViewModel.PendingMembershipProposals">
+                <GridColumns>
+                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="NewNation.Id" Title="Nation Address" />
+                    <GridColumn Field="NewNation.Name" Title="Nation Name"/>
+                    <GridColumn Field="Duration" Title="Voting Experation Date"/>
+                    <GridColumn>
+                        <Template>
+                            @if(((MembershipProposalViewModel)context).CanTally)
+                            {
+                                <TelerikButton OnClick="((MembershipProposalViewModel)context).Tally.BindCommand<MouseEventArgs>()">Tally</TelerikButton>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </TelerikGrid>
+            <h2>Ready for Final Tally</h2>
+            <TelerikGrid Data="ViewModel.ReadyMembershipProposals">
+                <GridColumns>
+                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="NewNation.Id" Title="Nation Address" />
+                    <GridColumn Field="NewNation.Name" Title="Nation Name" />
+                    <GridColumn Field="Duration" Title="Voting Experation Date" />
+                    <GridColumn>
+                        <Template>
+                            @if (((MembershipProposalViewModel)context).CanCompleteTally)
+                            {
+                                <TelerikButton OnClick="((MembershipProposalViewModel)context).CompleteTally.BindCommand<MouseEventArgs>()">Complete</TelerikButton>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </TelerikGrid>
+            <h2>Rejected</h2>
+            <TelerikGrid Data="ViewModel.RejectedMembershipProposals">
+                <GridColumns>
+                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="NewNation.Id" Title="Nation Address" />
+                    <GridColumn Field="NewNation.Name" Title="Nation Name" />
+                    <GridColumn Field="Duration" Title="Voting Experation Date" />
+                </GridColumns>
+            </TelerikGrid>
+            <h2>Approved</h2>
+            <TelerikGrid Data="ViewModel.ApprovedMembershipProposals">
+                <GridColumns>
+                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="NewNation.Id" Title="Nation Address" />
+                    <GridColumn Field="NewNation.Name" Title="Nation Name" />
+                    <GridColumn Field="Duration" Title="Voting Experation Date" />
                 </GridColumns>
             </TelerikGrid>
         }
@@ -58,7 +111,7 @@
     protected string? SignedData{ get; set; }
     protected override Task OnInitializedAsync()
     {
-        ViewModel.SignMembershipRequest.RegisterHandler(async data =>
+        ViewModel.SignatureRequest.RegisterHandler(async data =>
         {
             await JSRun.InvokeVoidAsync("signTransaction", ViewModel.AccountNumber, ViewModel.ContractAddress, data.Input, nameof(CallMemberRequestFin));
             await Slim.WaitAsync();

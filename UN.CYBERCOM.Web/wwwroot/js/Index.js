@@ -50,7 +50,7 @@ window.signTransaction = async function(fromAddress,contractAddress, tranData, r
         to: contractAddress,
         data: tranData,
         value: 0,
-        gas: 5000000
+        gas: 15000000
     };
     const signedTx = await window.ethereum.request({
         method: 'eth_signTransaction',

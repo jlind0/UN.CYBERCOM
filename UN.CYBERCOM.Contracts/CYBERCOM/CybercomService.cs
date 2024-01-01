@@ -128,6 +128,32 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryAsync<CalculateAverageFunction, BigInteger>(calculateAverageFunction, blockParameter);
         }
 
+        public Task<string> CompleteVotingRequestAsync(CompleteVotingFunction completeVotingFunction)
+        {
+             return ContractHandler.SendRequestAsync(completeVotingFunction);
+        }
+
+        public Task<TransactionReceipt> CompleteVotingRequestAndWaitForReceiptAsync(CompleteVotingFunction completeVotingFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(completeVotingFunction, cancellationToken);
+        }
+
+        public Task<string> CompleteVotingRequestAsync(BigInteger proposalId)
+        {
+            var completeVotingFunction = new CompleteVotingFunction();
+                completeVotingFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAsync(completeVotingFunction);
+        }
+
+        public Task<TransactionReceipt> CompleteVotingRequestAndWaitForReceiptAsync(BigInteger proposalId, CancellationTokenSource cancellationToken = null)
+        {
+            var completeVotingFunction = new CompleteVotingFunction();
+                completeVotingFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(completeVotingFunction, cancellationToken);
+        }
+
         public Task<GetApprovedMembershipRequestsOutputDTO> GetApprovedMembershipRequestsQueryAsync(GetApprovedMembershipRequestsFunction getApprovedMembershipRequestsFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetApprovedMembershipRequestsFunction, GetApprovedMembershipRequestsOutputDTO>(getApprovedMembershipRequestsFunction, blockParameter);
@@ -192,6 +218,16 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
                 getProposalVotesFunction.ProposalId = proposalId;
             
             return ContractHandler.QueryDeserializingToObjectAsync<GetProposalVotesFunction, GetProposalVotesOutputDTO>(getProposalVotesFunction, blockParameter);
+        }
+
+        public Task<GetReadyMembershipRequestsOutputDTO> GetReadyMembershipRequestsQueryAsync(GetReadyMembershipRequestsFunction getReadyMembershipRequestsFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetReadyMembershipRequestsFunction, GetReadyMembershipRequestsOutputDTO>(getReadyMembershipRequestsFunction, blockParameter);
+        }
+
+        public Task<GetReadyMembershipRequestsOutputDTO> GetReadyMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetReadyMembershipRequestsFunction, GetReadyMembershipRequestsOutputDTO>(null, blockParameter);
         }
 
         public Task<GetRejectedMembershipRequestsOutputDTO> GetRejectedMembershipRequestsQueryAsync(GetRejectedMembershipRequestsFunction getRejectedMembershipRequestsFunction, BlockParameter blockParameter = null)

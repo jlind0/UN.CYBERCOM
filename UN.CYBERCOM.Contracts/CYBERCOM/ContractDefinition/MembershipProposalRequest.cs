@@ -15,11 +15,9 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
         public virtual string Member { get; set; }
         [Parameter("tuple", "newNation", 2)]
         public virtual Nation NewNation { get; set; }
-        [Parameter("bytes32", "council", 3)]
-        public virtual byte[] Council { get; set; }
-        [Parameter("uint256", "groupId", 4)]
+        [Parameter("uint256", "groupId", 3)]
         public virtual BigInteger GroupId { get; set; }
-        [Parameter("uint256", "duration", 5)]
+        [Parameter("uint256", "duration", 4)]
         public virtual BigInteger Duration { get; set; }
     }
 }

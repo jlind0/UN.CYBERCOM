@@ -23,5 +23,7 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
         public virtual BigInteger Timestamp { get; set; }
         [Parameter("bool", "isProcessing", 6)]
         public virtual bool IsProcessing { get; set; }
+        [Parameter("uint256", "randomNumber", 7)]
+        public virtual BigInteger RandomNumber { get; set; }
     }
 }

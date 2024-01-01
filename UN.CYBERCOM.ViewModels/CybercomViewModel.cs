@@ -23,11 +23,11 @@ namespace UN.CYBERCOM.ViewModels
     public class CybercomViewModel : ReactiveObject
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
-        public Interaction<string, string> SignMembershipRequest { get; } = new Interaction<string, string>();
+        public Interaction<string, string> SignatureRequest { get; } = new Interaction<string, string>();
         public ReactiveCommand<Unit, Unit> Load { get; }
         public ReactiveCommand<Unit, Unit> Deploy { get; }
         public ReactiveCommand<Unit, Unit> MembershipRequest { get; }
-        protected Web3 W3 { get; }
+        internal Web3 W3 { get; }
         private string? accountNumber;
         public string? AccountNumber
         {
@@ -89,6 +89,10 @@ namespace UN.CYBERCOM.ViewModels
         private readonly CompositeDisposable disposable = new CompositeDisposable();
         public ObservableCollection<CouncilViewModel> Councils { get; } = new ObservableCollection<CouncilViewModel>();
         public ObservableCollection<Nation> Nations { get; } = new ObservableCollection<Nation>();
+        public ObservableCollection<MembershipProposalViewModel> PendingMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
+        public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
+        public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
+        public ObservableCollection<MembershipProposalViewModel> RejectedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public CybercomViewModel(Web3 w3, IConfiguration config)
         {
             W3 = w3;
@@ -136,7 +140,6 @@ namespace UN.CYBERCOM.ViewModels
                         Request = new MembershipProposalRequest()
                         {
                             Member = NewMemberAddress,
-                            Council = SelectedCouncil.RoleBytes,
                             NewNation = new Nation()
                             {
                                 Name = NewNationName,
@@ -146,12 +149,11 @@ namespace UN.CYBERCOM.ViewModels
                             Duration = BigInteger.Zero
                         },
                         AmountToSend = 0,
-                        Gas = 5000000,
+                        Gas = 15000000,
                         
                     };
-                    var es = tran.GetEncodingService();
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                    var signedData = await SignMembershipRequest.Handle(data).GetAwaiter();
+                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
                     var str = await W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                     //await CyberService.SubmitMembershipProposalRequestAndWaitForReceiptAsync(new SubmitMembershipProposalFunction().DecodeInput(signedData));
                 }
@@ -210,11 +212,40 @@ namespace UN.CYBERCOM.ViewModels
                     });
                     Nations.AddRange(nationDto.ReturnValue1);
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
+                    PendingMembershipProposals.Clear();
+                    var pendingDto = await CyberService.GetPendingMembershipRequestsQueryAsync(new GetPendingMembershipRequestsFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
+                    PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    var readyDto = await CyberService.GetReadyMembershipRequestsQueryAsync(new GetReadyMembershipRequestsFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    ReadyMembershipProposals.Clear();
+                    ReadyMembershipProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    var rejectedDto = await CyberService.GetRejectedMembershipRequestsQueryAsync(new GetRejectedMembershipRequestsFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    RejectedMembershipProposals.Clear();
+                    RejectedMembershipProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    var approvedDto = await CyberService.GetApprovedMembershipRequestsQueryAsync(new GetApprovedMembershipRequestsFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    ApprovedMembershipProposals.Clear();
+                    ApprovedMembershipProposals.AddRange(approvedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+
                 }
                 else
                 {
                     Councils.Clear();
                     Nations.Clear();
+                    PendingMembershipProposals.Clear();
+                    ReadyMembershipProposals.Clear();
+                    RejectedMembershipProposals.Clear();
                 }
             }
             catch (Exception ex)
@@ -227,9 +258,116 @@ namespace UN.CYBERCOM.ViewModels
             }
         }
     }
+    public class MembershipProposalViewModel : ReactiveObject
+    {
+        public enum ApprovalStatus : byte
+        {
+            Pending,
+            Ready,
+            Approved,
+            Rejected
+        }
+        protected Interaction<string, string> SignatureRequest { get; }
+        protected Interaction<string, bool> Alert { get; }
+        protected MembershipProposalResponse Data { get; }
+        public Council Council { get; }
+        public CouncilGroup CouncilGroup { get; }
+        public string Id
+        {
+            get => Data.Id.ToString();
+        }
+        public Nation NewNation
+        {
+            get => Data.NewNation;
+        }
+        public string ProposalId
+        {
+            get => Data.Proposal.Id.ToString();
+        }
+        public DateTime Duration
+        {
+            get => Data.Proposal.Duration.FromUnixTimestamp();
+        }
+        public ReactiveCommand<Unit, Unit> Tally { get; }
+        public ReactiveCommand<Unit, Unit> CompleteTally { get; }
+        public bool CanTally
+        {
+            get => ((ApprovalStatus)Data.Proposal.Status) == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !Data.Proposal.IsProcessing;
+        }
+        public bool CanCompleteTally
+        {
+            get => ((ApprovalStatus)Data.Proposal.Status) == ApprovalStatus.Ready;
+        }
+        protected CybercomViewModel Parent { get; }
+        public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council)
+        {
+            Parent = vm;
+            SignatureRequest = vm.SignatureRequest;
+            Alert = vm.Alert;
+            Data = data;
+            Council = council;
+            CouncilGroup = Council.Groups.Single(g => g.Id == Data.GroupId);
+            Tally = ReactiveCommand.CreateFromTask(DoTally);
+            CompleteTally = ReactiveCommand.CreateFromTask(DoCompleteTally);
+        }
+        protected async Task DoCompleteTally()
+        {
+            try
+            {
+                if (CanCompleteTally)
+                {
+                    var tran = new CompleteVotingFunction()
+                    {
+                        FromAddress = Parent.AccountNumber,
+                        ProposalId = Data.Proposal.Id,
+                        AmountToSend = 0,
+                        Gas = 15000000
+                    };
+                    var data = Convert.ToHexString(tran.GetCallData()).ToLower();
+                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+                }
+            }
+            catch(Exception ex)
+            {
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+        protected async Task DoTally()
+        {
+            try
+            {
+                if(CanTally)
+                {
+                    var tran = new PrepareTallyFunction()
+                    {
+                        FromAddress = Parent.AccountNumber,
+                        ProposalId = Data.Proposal.Id,
+                        AmountToSend = 0,
+                        Gas = 15000000
+                    };
+                    var data = Convert.ToHexString(tran.GetCallData()).ToLower();
+                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+                }
+            }
+            catch(Exception ex)
+            {
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+    }
+    public static class DateTimeExtensions
+    {
+        public static DateTime FromUnixTimestamp(this BigInteger timestamp) 
+        {
+            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            return dateTime.AddSeconds(((long)timestamp));
+        }
+    }
     public class CouncilViewModel : ReactiveObject
     {
-        protected Council Data { get; }
+        public Council Data { get; }
         public string Name
         {
             get => Data.Name;

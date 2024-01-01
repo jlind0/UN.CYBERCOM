@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "./node_modules/@openzeppelin/contracts/access/AccessControl.sol";
 import "./node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./node_modules/@openzeppelin/contracts/utils/math/Math.sol";
+import "./node_modules/@openzeppelin/contracts/utils/Strings.sol";
 import "./node_modules/@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "./node_modules/@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 
@@ -14,7 +15,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     VRFCoordinatorV2Interface COORDINATOR;
     address vrfCoordinator = 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625;
     bytes32 s_keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
-    uint32 callbackGasLimit = 4000000;
+    uint32 callbackGasLimit = 1000000;
     uint16 requestConfirmations = 3;
     uint32 numWords =  1;
     mapping(uint => uint) requestToProposal;
@@ -30,9 +31,12 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         }
         return score;
     }
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) 
+    internal override {
         Proposal storage proposal = proposals[requestToProposal[requestId]];
-        TallyResult memory tally = tallyVotes(proposal.id, randomWords[0]);
+        proposal.randomNumber = randomWords[0];
+        proposal.status = ApprovalStatus.Ready;
+        /*TallyResult memory tally = tallyVotes(proposal.id, randomWords[0]);
         if(tally.status == ApprovalStatus.Approved){
             proposal.status = ApprovalStatus.Approved;
             if(proposal.proposalType == ProposalTypes.Membership){
@@ -47,6 +51,25 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
                 MembershipProposal storage mp = membershipProposals[proposal.id];
                 mp.proposal = proposal;
             }
+        }*/
+    }
+    function completeVoting(uint proposalId)
+        isMember("Must be member to complete voting")
+        external 
+    {
+        Proposal storage proposal = proposals[proposalId];
+        if(proposal.status != ApprovalStatus.Ready)
+            revert("Proposal is not ready to tally on yet");
+        TallyResult memory tally = tallyVotes(proposal.id, proposal.randomNumber);
+        if(tally.status == ApprovalStatus.Approved){
+            proposal.status = ApprovalStatus.Approved;
+            if(proposal.proposalType == ProposalTypes.Membership){
+                MembershipProposal storage mp = membershipProposals[proposalToMembershipProposal[proposal.id]];
+                acceptNewMember(mp);
+            }
+        }
+        else if(tally.status == ApprovalStatus.Rejected){
+            proposal.status = ApprovalStatus.Rejected;
         }
     }
     modifier isMember(string memory message) {
@@ -89,8 +112,8 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     uint totalCouncilGroups;
     address[] nationAddresses;
     mapping(address => Nation) nations;
-    mapping(address => Council) nationsCouncil;
-    mapping(uint => CouncilGroup) councilGroups;
+    mapping(address => bytes32) nationsCouncil;
+    mapping(uint => bytes32) councilGroups;
     struct Nation{
         address id;
         string name;
@@ -144,16 +167,17 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     }
     uint totalMembershipProposals;
     uint totalProposals;
-    uint32 MIN_VOTE_DURATION = 5 minutes;
+    uint32 MIN_VOTE_DURATION = 1 minutes;
     mapping(uint => Proposal) proposals;
     uint[] proposalIds;
     mapping (uint => MembershipProposal) membershipProposals;
+    mapping(uint => uint) membershipProposalToProposal;
+    mapping(uint => uint) proposalToMembershipProposal;
     uint[] membershipProposalIds;
-    mapping(address => MembershipProposal) membershipProposalsByMember;
+    mapping(address => uint) memberMembershipProposal;
     struct MembershipProposalRequest{
         address member;
         Nation newNation;
-        bytes32 council;
         uint groupId;
         uint duration;
     }
@@ -164,18 +188,26 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         ApprovalStatus status;
         uint timestamp;
         bool isProcessing;
+        uint randomNumber;
     }
     enum ApprovalStatus{
         Pending,
+        Ready,
         Approved,
         Rejected
     }
-    struct MembershipProposal{
+    struct MembershipProposalResponse{
         uint id;
         Proposal proposal;
         address member;
         Nation newNation;
         bytes32 council;
+        uint groupId;
+    }
+    struct MembershipProposal{
+        uint id;
+        uint proposalId;
+        Nation newNation;
         uint groupId;
     }
     enum ProposalTypes{
@@ -220,50 +252,55 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         councils[BROKER_ROLE].role = BROKER_ROLE;
         councils[BROKER_ROLE].votingParameters = VotingParameters(false, false, 0, 0, 1, 0, 1, 0, false);
         councils[BROKER_ROLE].groups.push();
-        councils[BROKER_ROLE].groups[0].id = totalCouncilGroups++;
+        councils[BROKER_ROLE].groups[0].id = ++totalCouncilGroups;
         councils[BROKER_ROLE].groups[0].name = "Primary";
-        councilGroups[councils[BROKER_ROLE].groups[0].id] = councils[BROKER_ROLE].groups[0];
         councils[BROKER_ROLE].groupsCount = 1;
+        councilGroups[totalCouncilGroups] = BROKER_ROLE;
+        
         councilRoles.push(BROKER_ROLE);
         councils[POWER_ROLE].name = "Power";
         councils[POWER_ROLE].role = POWER_ROLE;
         councils[POWER_ROLE].votingParameters = VotingParameters(false, true, 0, 1, 1, 6, 1, 1, false);
         councils[POWER_ROLE].groups.push();
-        councils[POWER_ROLE].groups[0].id = totalCouncilGroups++;
+        councils[POWER_ROLE].groups[0].id = ++totalCouncilGroups;
         councils[POWER_ROLE].groups[0].name = "Primary";
-        councilGroups[councils[POWER_ROLE].groups[0].id] = councils[POWER_ROLE].groups[0];
         councils[POWER_ROLE].groupsCount = 1;
+        councilGroups[totalCouncilGroups] = POWER_ROLE;
+        
         councilRoles.push(POWER_ROLE);
         councils[CENTRAL_ROLE].name = "Central";
         councils[CENTRAL_ROLE].role = CENTRAL_ROLE;
         councils[CENTRAL_ROLE].votingParameters = VotingParameters(false, false, 0, 1, 3, 1, 1, 2, false);
         councils[CENTRAL_ROLE].groups.push();
         councils[CENTRAL_ROLE].groups[0].name = "Primary";
-        councils[CENTRAL_ROLE].groups[0].id = totalCouncilGroups++;
-        councilGroups[councils[CENTRAL_ROLE].groups[0].id] = councils[CENTRAL_ROLE].groups[0];
+        councils[CENTRAL_ROLE].groups[0].id = ++totalCouncilGroups;
         councils[CENTRAL_ROLE].groupsCount = 1;
+        councilGroups[totalCouncilGroups] = CENTRAL_ROLE;
+        
         councilRoles.push(CENTRAL_ROLE);
         councils[EMERGING_ROLE].name = "Emerging";
         councils[EMERGING_ROLE].role = EMERGING_ROLE;
         councils[EMERGING_ROLE].votingParameters = VotingParameters(true, false, 1, 0, 4, 1, 1, 3, false);
         councils[EMERGING_ROLE].groups.push();
-        councils[EMERGING_ROLE].groups[0].id = totalCouncilGroups++;
-        councils[EMERGING_ROLE].groups[0].name = "Group A";
-        councilGroups[councils[EMERGING_ROLE].groups[0].id] = councils[EMERGING_ROLE].groups[0];
-        councils[EMERGING_ROLE].groups.push();
-        councils[EMERGING_ROLE].groups[1].id = totalCouncilGroups++;
-        councils[EMERGING_ROLE].groups[1].name = "Group B";
-        councilGroups[councils[EMERGING_ROLE].groups[1].id] = councils[EMERGING_ROLE].groups[1];
         councils[EMERGING_ROLE].groupsCount = 2;
+        councils[EMERGING_ROLE].groups[0].id = ++totalCouncilGroups;
+        councils[EMERGING_ROLE].groups[0].name = "Group A";
+        councilGroups[totalCouncilGroups] = EMERGING_ROLE;
+        councils[EMERGING_ROLE].groups.push();
+        councils[EMERGING_ROLE].groups[1].id = ++totalCouncilGroups;
+        councils[EMERGING_ROLE].groups[1].name = "Group B";
+        councilGroups[totalCouncilGroups] = EMERGING_ROLE;
+        
         councilRoles.push(EMERGING_ROLE);
         councils[GENERAL_ROLE].name = "General";
         councils[GENERAL_ROLE].role = GENERAL_ROLE;
         councils[GENERAL_ROLE].votingParameters = VotingParameters(false, false, 0, 0, 1, 1, 1, 2, true);
         councils[GENERAL_ROLE].groups.push();
         councils[GENERAL_ROLE].groups[0].name = "Primary";
-        councils[GENERAL_ROLE].groups[0].id = totalCouncilGroups++;
-        councilGroups[councils[GENERAL_ROLE].groups[0].id] = councils[GENERAL_ROLE].groups[0];
+        councils[GENERAL_ROLE].groups[0].id = ++totalCouncilGroups;
         councils[GENERAL_ROLE].groupsCount = 1;
+        councilGroups[totalCouncilGroups] = GENERAL_ROLE;
+        
         councilRoles.push(GENERAL_ROLE);
     }
     modifier onlyOwner() {
@@ -276,73 +313,108 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         return councils[role];
     }
     function getPendingMembershipRequests() 
-        external view returns(MembershipProposal[] memory)
+        external view returns(MembershipProposalResponse[] memory)
     {
         MembershipProposal[] memory props = new MembershipProposal[](totalMembershipProposals);
         uint i = 0; 
         uint j = 0;
         while(i < totalMembershipProposals)
         {
-            if(membershipProposals[membershipProposalIds[i]].proposal.status == ApprovalStatus.Pending)
+            if(proposals[proposalToMembershipProposal[membershipProposalIds[i]]].status == ApprovalStatus.Pending)
             {
                 props[j] = membershipProposals[membershipProposalIds[i]];
                 j++;
             }
             i++;
         }
-        MembershipProposal[] memory rtn = new MembershipProposal[](j);
+        MembershipProposalResponse[] memory rtn = new MembershipProposalResponse[](j);
         i = 0;
         while(i < j){
-            rtn[i] = props[i];
+            rtn[i] = getMembershipResponse(props[i]);
+            i++;
+        }
+        return rtn;
+    }
+    function getReadyMembershipRequests() 
+        external view returns(MembershipProposalResponse[] memory)
+    {
+        MembershipProposal[] memory props = new MembershipProposal[](totalMembershipProposals);
+        uint i = 0; 
+        uint j = 0;
+        while(i < totalMembershipProposals)
+        {
+            if(proposals[proposalToMembershipProposal[membershipProposalIds[i]]].status == ApprovalStatus.Ready)
+            {
+                props[j] = membershipProposals[membershipProposalIds[i]];
+                j++;
+            }
+            i++;
+        }
+        MembershipProposalResponse[] memory rtn = new MembershipProposalResponse[](j);
+        i = 0;
+        while(i < j){
+            rtn[i] = getMembershipResponse(props[i]);
             i++;
         }
         return rtn;
     }
     function getRejectedMembershipRequests() 
-        external view returns(MembershipProposal[] memory)
+        external view returns(MembershipProposalResponse[] memory)
     {
         MembershipProposal[] memory props = new MembershipProposal[](totalMembershipProposals);
         uint i = 0; 
         uint j = 0;
         while(i < totalMembershipProposals)
         {
-            if(membershipProposals[membershipProposalIds[i]].proposal.status == ApprovalStatus.Rejected)
+            if(proposals[proposalToMembershipProposal[membershipProposalIds[i]]].status == ApprovalStatus.Rejected)
             {
                 props[j] = membershipProposals[membershipProposalIds[i]];
                 j++;
             }
             i++;
         }
-        MembershipProposal[] memory rtn = new MembershipProposal[](j);
+        MembershipProposalResponse[] memory rtn = new MembershipProposalResponse[](j);
         i = 0;
         while(i < j){
-            rtn[i] = props[i];
+            rtn[i] = getMembershipResponse(props[i]);
             i++;
         }
         return rtn;
     }
     function getApprovedMembershipRequests() 
-        external view returns(MembershipProposal[] memory)
+        external view returns(MembershipProposalResponse[] memory)
     {
         MembershipProposal[] memory props = new MembershipProposal[](totalMembershipProposals);
         uint i = 0; 
         uint j = 0;
         while(i < totalMembershipProposals)
         {
-            if(membershipProposals[membershipProposalIds[i]].proposal.status == ApprovalStatus.Approved)
+            if(proposals[proposalToMembershipProposal[membershipProposalIds[i]]].status == ApprovalStatus.Approved)
             {
                 props[j] = membershipProposals[membershipProposalIds[i]];
                 j++;
             }
             i++;
         }
-        MembershipProposal[] memory rtn = new MembershipProposal[](j);
+        MembershipProposalResponse[] memory rtn = new MembershipProposalResponse[](j);
         i = 0;
         while(i < j){
-            rtn[i] = props[i];
+            rtn[i] = getMembershipResponse(props[i]);
             i++;
         }
         return rtn;
+    }
+    function getMembershipResponse(MembershipProposal memory prop)
+        private view returns(MembershipProposalResponse memory)
+    {
+        return MembershipProposalResponse(
+            prop.id,
+            proposals[prop.proposalId],
+            prop.newNation.id,
+            prop.newNation,
+            councilGroups[prop.groupId],
+            prop.groupId
+        );
     }
     struct CouncilVotes{
         bytes32 councilId;
@@ -363,14 +435,14 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     }
     mapping(uint => TallyResult) proposalTallyResults;
     function tallyVotes(uint proposalId, uint randomNumber) 
-        private view returns(TallyResult memory tallyResult)
+        private view returns(TallyResult memory)
     {
         if(proposalTallyResults[proposalId].proposalId == proposalId)
             revert("The proposal has already been tallies");
         Vote[] memory vs = proposalVotes[proposalId];
+        
         if(vs.length == 0)
-            revert("No votes on proposal.");
-
+            return TallyResult(new CouncilVotes[](0), 0, ApprovalStatus.Rejected, proposalId);
         CouncilVotes[] memory cvs = getCouncilVotes(proposalId);
         uint i = 0;
         
@@ -417,7 +489,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         CouncilVotes[] memory cvs = new CouncilVotes[](5);
         while(i < vs.length){
             Vote memory vt = vs[i];
-            Council memory council = nationsCouncil[vt.member];
+            Council memory council = councils[nationsCouncil[vt.member]];
             CouncilGroup memory cg = findCouncilGroup(council, vt.member);
             uint idx = getIndexForCouncil(council.role);
             CouncilVotes memory cv = cvs[idx];
@@ -672,8 +744,8 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     function submitMembershipProposal(MembershipProposalRequest memory request) 
         external returns(uint)
     {
-        if(councilGroups[request.groupId].id != request.groupId)
-            revert("Invalid Group");
+        if(councils[councilGroups[request.groupId]].groupsCount == 0)
+            revert(string(abi.encodePacked("Invalid Group", Strings.toString(request.groupId))));
         if(totalNations == 0){
             MembershipProposal memory prop = constructMembershipProposal(request);
             acceptNewMember(prop);
@@ -681,53 +753,59 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         }
         else if(nations[request.member].id == request.member)
             revert("Nation Already a Member");
-        else if(membershipProposalsByMember[request.member].member == request.member)
+        else if(memberMembershipProposal[request.member] > 0)
         {
-            MembershipProposal storage prop = membershipProposalsByMember[request.member];
-            if(prop.proposal.status == ApprovalStatus.Pending)
-            {
-                //TODO: check status
-            }
-            else if(prop.proposal.status == ApprovalStatus.Approved)
+            MembershipProposal memory prop = membershipProposals[memberMembershipProposal[request.member]];
+            Proposal memory proposal = proposals[proposalToMembershipProposal[prop.id]];
+            if(proposal.status == ApprovalStatus.Pending || proposal.status == ApprovalStatus.Ready)
+                revert("Outstanding proposal");
+            else if(proposal.status == ApprovalStatus.Approved)
                 return prop.id;
-            else if(prop.proposal.status == ApprovalStatus.Rejected)
+            else if(proposal.status == ApprovalStatus.Rejected)
                 return constructMembershipProposal(request).id;
         }
         else
             return constructMembershipProposal(request).id;
         return 0;
     }
-    
+    function populateProposal(Proposal memory prop)
+        private
+    {
+        proposals[prop.id] = prop;
+         proposalIds.push(prop.id);
+    }
     function constructMembershipProposal(MembershipProposalRequest memory request) 
         private returns(MembershipProposal memory)
         {
             if(request.duration < MIN_VOTE_DURATION){
                 request.duration = MIN_VOTE_DURATION;
             }
-            MembershipProposal memory prop = MembershipProposal(
-                totalMembershipProposals++,
-                Proposal(
-                    totalProposals++, 
+            Proposal memory proposal = Proposal(
+                    ++totalProposals, 
                     ProposalTypes.Membership,
                     block.timestamp + request.duration,
                     ApprovalStatus.Pending,
                     block.timestamp,
-                    false),
-                request.member, 
-                request.newNation, 
-                request.council, 
+                    false,
+                    0);
+            populateProposal(proposal);
+            MembershipProposal memory prop = MembershipProposal(
+                ++totalMembershipProposals,
+                proposal.id,
+                request.newNation,
                 request.groupId
                 );
-         proposals[prop.proposal.id] = prop.proposal;
-         proposalIds.push(prop.proposal.id);
+         
          membershipProposals[prop.id] = prop;
          membershipProposalIds.push(prop.id);
-         membershipProposalsByMember[prop.member] = prop;
+         memberMembershipProposal[prop.newNation.id] = prop.id;
+         proposalToMembershipProposal[proposal.id] = prop.id;
+         membershipProposalToProposal[prop.id] = proposal.id;
          return prop;
     }
     function acceptNewMember(MembershipProposal memory proposal) 
     private {
-        Council storage targetCouncil = councils[proposal.council];
+        Council storage targetCouncil = councils[councilGroups[proposal.groupId]];
         uint i = 0;
         while(i < targetCouncil.groups.length){
             if(targetCouncil.groups[i].id == proposal.groupId)
@@ -738,7 +816,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         totalNations++;
         nations[proposal.newNation.id] = proposal.newNation;
         nationAddresses.push(proposal.newNation.id);
-        nationsCouncil[proposal.newNation.id] = targetCouncil;
+        nationsCouncil[proposal.newNation.id] = targetCouncil.role;
         group.members.push(proposal.newNation);
         _grantRole(targetCouncil.role, proposal.newNation.id);
     }

@@ -7,9 +7,9 @@ using Nethereum.ABI.FunctionEncoding.Attributes;
 
 namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
 {
-    public partial class MembershipProposal : MembershipProposalBase { }
+    public partial class MembershipProposalResponse : MembershipProposalResponseBase { }
 
-    public class MembershipProposalBase 
+    public class MembershipProposalResponseBase 
     {
         [Parameter("uint256", "id", 1)]
         public virtual BigInteger Id { get; set; }
