@@ -16,7 +16,10 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UN.CYBERCOM.Contracts.CYBERCOM;
+using UNCYOLD = UN.CYBERCOM.Contracts.CYBERCOM.OLD;
 using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition;
+using UNCYOLDCD = UN.CYBERCOM.Contracts.CYBERCOM.OLD.ContractDefinition;
+using AutoMapper;
 
 namespace UN.CYBERCOM.ViewModels
 {
@@ -93,7 +96,7 @@ namespace UN.CYBERCOM.ViewModels
         public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> RejectedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-       
+        protected string? OldContractAddress { get; }
         public CybercomViewModel(Web3 w3, IConfiguration config)
         {
             W3 = w3;
@@ -102,6 +105,7 @@ namespace UN.CYBERCOM.ViewModels
             Deploy = ReactiveCommand.CreateFromTask(DoDeploy);
             MembershipRequest = ReactiveCommand.CreateFromTask(DoMembershipRequest);
             ContractAddress = config["CYBERCOM:Address"];
+            OldContractAddress = config["CYBERCOM:OldAddress"];
             SubscriptionId = ulong.Parse(config["VRF:SubscriptionId"] ?? throw new InvalidDataException());
             this.WhenPropertyChanged(p => p.AccountNumber).Subscribe(p =>
             {
@@ -175,11 +179,25 @@ namespace UN.CYBERCOM.ViewModels
                 IsLoading = true;
                 if (!IsDeployed)
                 {
+                    GetCouncilsOutputDTO? oldData = null;
+                    if (OldContractAddress != null)
+                    {
+                        UNCYOLD.CybercomService cs = new UNCYOLD.CybercomService(W3, OldContractAddress);
+                        oldData = await cs.GetCouncilsQueryAsync();
+                    }
                     var rcpt = await CybercomService.DeployContractAndWaitForReceiptAsync(W3, new CybercomDeployment()
                     {
                         SubscriptionId = SubscriptionId
                     });
                     ContractAddress = rcpt.ContractAddress;
+                    if (oldData != null) 
+                    {
+                        CybercomService cs = new CybercomService(W3, ContractAddress);
+                        await cs.LoadOldCouncilsRequestAndWaitForReceiptAsync(new LoadOldCouncilsFunction()
+                        {
+                            OldCouncils = oldData.ReturnValue1
+                        });
+                    }
                     IsDeployed = true;
                 }
             }
