@@ -93,6 +93,7 @@ namespace UN.CYBERCOM.ViewModels
         public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> RejectedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
+       
         public CybercomViewModel(Web3 w3, IConfiguration config)
         {
             W3 = w3;
@@ -149,7 +150,7 @@ namespace UN.CYBERCOM.ViewModels
                             Duration = BigInteger.Zero
                         },
                         AmountToSend = 0,
-                        Gas = 15000000,
+                        Gas = 1500000,
                         
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
@@ -219,24 +220,32 @@ namespace UN.CYBERCOM.ViewModels
                     });
                     var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
                     PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    foreach (var pmp in PendingMembershipProposals)
+                        await pmp.Load.Execute().GetAwaiter();
                     var readyDto = await CyberService.GetReadyMembershipRequestsQueryAsync(new GetReadyMembershipRequestsFunction()
                     {
                         FromAddress = AccountNumber
                     });
                     ReadyMembershipProposals.Clear();
                     ReadyMembershipProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    foreach (var pmp in ReadyMembershipProposals)
+                        await pmp.Load.Execute().GetAwaiter();
                     var rejectedDto = await CyberService.GetRejectedMembershipRequestsQueryAsync(new GetRejectedMembershipRequestsFunction()
                     {
                         FromAddress = AccountNumber
                     });
                     RejectedMembershipProposals.Clear();
                     RejectedMembershipProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    foreach (var pmp in RejectedMembershipProposals)
+                        await pmp.Load.Execute().GetAwaiter();
                     var approvedDto = await CyberService.GetApprovedMembershipRequestsQueryAsync(new GetApprovedMembershipRequestsFunction()
                     {
                         FromAddress = AccountNumber
                     });
                     ApprovedMembershipProposals.Clear();
                     ApprovedMembershipProposals.AddRange(approvedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    foreach (var pmp in ApprovedMembershipProposals)
+                        await pmp.Load.Execute().GetAwaiter();
 
                 }
                 else
@@ -258,8 +267,25 @@ namespace UN.CYBERCOM.ViewModels
             }
         }
     }
+    public class MembershipVoteProposalViewModel : ReactiveObject
+    {
+        public MembershipProposalViewModel Proposal { get; }
+        
+        public Vote Data { get; }
+        public bool CastedVote { get => Data.VoteCasted; }
+        public Nation Nation { get; }
+        protected CybercomViewModel Root { get; }
+        public MembershipVoteProposalViewModel(CybercomViewModel root, MembershipProposalViewModel proposal, Vote vote)
+        {
+            Root = root;
+            Data = vote;
+            Proposal = proposal;
+            Nation = root.Nations.Single(n => n.Id == vote.Member);
+        }
+    }
     public class MembershipProposalViewModel : ReactiveObject
     {
+        public ObservableCollection<MembershipVoteProposalViewModel> MembershipVotes { get; } = new ObservableCollection<MembershipVoteProposalViewModel>();
         public enum ApprovalStatus : byte
         {
             Pending,
@@ -290,9 +316,21 @@ namespace UN.CYBERCOM.ViewModels
         }
         public ReactiveCommand<Unit, Unit> Tally { get; }
         public ReactiveCommand<Unit, Unit> CompleteTally { get; }
+        public ReactiveCommand<Unit, Unit> Vote { get; }
+        public ReactiveCommand<Unit, Unit> Load { get; }
+        private bool castVote;
+        public bool CastVote
+        {
+            get => castVote;
+            set => this.RaiseAndSetIfChanged(ref castVote, value);
+        }
         public bool CanTally
         {
             get => ((ApprovalStatus)Data.Proposal.Status) == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !Data.Proposal.IsProcessing;
+        }
+        public bool CanVote
+        {
+            get => !CanTally && !CanCompleteTally;
         }
         public bool CanCompleteTally
         {
@@ -309,6 +347,50 @@ namespace UN.CYBERCOM.ViewModels
             CouncilGroup = Council.Groups.Single(g => g.Id == Data.GroupId);
             Tally = ReactiveCommand.CreateFromTask(DoTally);
             CompleteTally = ReactiveCommand.CreateFromTask(DoCompleteTally);
+            Vote = ReactiveCommand.CreateFromTask(DoVote);
+            Load = ReactiveCommand.CreateFromTask(DoLoad);
+        }
+        protected async Task DoLoad()
+        {
+            try
+            {
+                if (Parent.CyberService != null)
+                {
+                    var votesDto = await Parent.CyberService.GetProposalVotesQueryAsync(new GetProposalVotesFunction()
+                    {
+                        ProposalId = Data.Proposal.Id,
+                        FromAddress = Parent.AccountNumber
+                    });
+                    MembershipVotes.Clear();
+                    MembershipVotes.AddRange(votesDto.ReturnValue1.Where(v => v.Votes.Count > 0).SelectMany(v => v.Votes).Where(v => v.Votes.Count > 0).SelectMany(v => v.Votes).Select(
+                        v => new MembershipVoteProposalViewModel(Parent, this, v)));
+                }
+            }
+            catch (Exception ex)
+            {
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+        protected async Task DoVote()
+        {
+            try
+            {
+                var tran = new PerformVoteFunction()
+                {
+                    FromAddress = Parent.AccountNumber,
+                    ProposalId = Data.Proposal.Id,
+                    AmountToSend = 0,
+                    Gas = 1500000,
+                    VoteCasted = CastVote
+                };
+                var data = Convert.ToHexString(tran.GetCallData()).ToLower();
+                var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+            }
+            catch (Exception ex)
+            {
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
         }
         protected async Task DoCompleteTally()
         {
@@ -321,7 +403,7 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = Parent.AccountNumber,
                         ProposalId = Data.Proposal.Id,
                         AmountToSend = 0,
-                        Gas = 15000000
+                        Gas = 1500000
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
                     var signedData = await SignatureRequest.Handle(data).GetAwaiter();
@@ -344,7 +426,7 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = Parent.AccountNumber,
                         ProposalId = Data.Proposal.Id,
                         AmountToSend = 0,
-                        Gas = 15000000
+                        Gas = 1500000
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
                     var signedData = await SignatureRequest.Handle(data).GetAwaiter();

@@ -1,4 +1,4 @@
-﻿@page "/cybercom"
+﻿@page "/"
 @using UN.CYBERCOM.ViewModels
 @using UN.CYBERCOM.Web.Helpers
 @using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
@@ -64,6 +64,7 @@
                             {
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).Tally.BindCommand<MouseEventArgs>()">Tally</TelerikButton>
                             }
+                            <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
                         </Template>
                     </GridColumn>
                 </GridColumns>

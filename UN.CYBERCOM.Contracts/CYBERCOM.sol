@@ -440,32 +440,81 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         if(proposalTallyResults[proposalId].proposalId == proposalId)
             revert("The proposal has already been tallies");
         Vote[] memory vs = proposalVotes[proposalId];
-        
         if(vs.length == 0)
             return TallyResult(new CouncilVotes[](0), 0, ApprovalStatus.Rejected, proposalId);
         CouncilVotes[] memory cvs = getCouncilVotes(proposalId);
         uint i = 0;
-        
-        while(i < vs.length){
-
-            uint rdn = randomNumber;
+        uint k = 0;
+        while(i < cvs.length){
             CouncilVotes memory cv = cvs[i];
-            Council memory c = councils[cv.councilId];
-            uint colSize = c.groups.length;
-            if(cv.votes.length >= cv.votingParameters.outputCountForGroup && cv.votingParameters.outputCountForGroup > 0)
-                colSize = cv.votingParameters.outputCountForGroup;
-            cv = buildGroupVotes(cv);
-            uint rdn2 = rdn;
-            CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](colSize);
-            
-            bool doAvg = cv.votingParameters.avgVotes;
-            if(cv.votingParameters.randomizeByGroup){
-                
-                cgv = populateRandomGroupVotes(cv, cgv, colSize, rdn2);
+            uint j = 0;
+            uint m = 0;
+            while(j < cv.votes.length){
+                if(cv.votes[j].votes.length > 0)
+                    m++;
+                j++;
             }
-            else
-                cgv = populateGroupVote(cv, cgv, colSize, rdn2, doAvg);
+            CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](m);
+            j = 0;
+            m = 0;
+            while(j < cv.votes.length){
+                if(cv.votes[j].votes.length > 0)
+                {
+                    cgv[m] = cv.votes[j];
+                    m++;
+                }
+                j++;
+            }
+            if(m > 0)
+                k++;
             cv.votes = cgv;
+            i++;
+        }
+        CouncilVotes[] memory cvs2 = new CouncilVotes[](k);
+        i = 0;
+        k = 0;
+        while(i < cvs.length){
+            if(cvs[i].votes.length > 0){
+                cvs2[k] = cvs[i];
+                k++;
+            }
+            i++;
+        }
+        cvs = cvs2;
+        i = 0;
+        while(i < cvs.length){
+            CouncilVotes memory cv = cvs[i];
+            if(cv.votingParameters.randomizeByGroup){
+                if(cv.votes.length > cv.votingParameters.outputCountForGroup){
+                    CouncilGroupVotes[] memory cgv = new CouncilGroupVotes[](cv.votingParameters.outputCountForGroup);
+                    uint[] memory randoms = getRandomIndices(randomNumber, cv.votingParameters.outputCountForGroup, cv.votes.length);
+                    uint x = 0;
+                    while(x < randoms.length){
+                        cgv[x] = cv.votes[randoms[x]];
+                        x++;
+                    }
+                    cv.votes = cgv; 
+                }
+            }
+            uint d = 0;
+            while(d < cv.votes.length){
+                CouncilGroupVotes memory cgv = cv.votes[d];
+                if(cv.votingParameters.randomizeByMember){
+                    if(cgv.votes.length > cv.votingParameters.outputCountForMember){
+                        Vote[] memory vts = new Vote[](cv.votingParameters.outputCountForMember);
+                        uint[] memory randoms = getRandomIndices(randomNumber, cv.votingParameters.outputCountForMember, cgv.votes.length);
+                        uint x = 0;
+                        while(x < randoms.length){
+                            vts[x] = cgv.votes[randoms[x]];
+                            x++;
+                        }
+                        cgv.votes = vts;
+                    } 
+                }
+                cv.votes[d] = cgv;
+                d++;
+            }
+            cvs[i] = cv;
             i++;
         }
         cvs = populateGroupScore(cvs);
@@ -481,6 +530,50 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
     function getProposalVotes(uint proposalId)
         external view returns(CouncilVotes[] memory){
             return getCouncilVotes(proposalId);
+    }
+    // Function to calculate the number of bits required to represent a number
+    function bitLength(uint number) private pure returns (uint) {
+        uint count = 0;
+        while (number > 0) {
+            count++;
+            number >>= 1;
+        }
+        return count;
+    }
+
+    // Function to get N unique random indices from an array of length M
+    function getRandomIndices(uint R, uint N, uint M) private pure returns (uint[] memory) {
+        require(M > 1, "Array length must be greater than 1");
+        require(N <= M, "Number of indices must be less than or equal to array length");
+
+        uint[] memory indices = new uint[](N);
+        uint bitsNeeded = bitLength(M - 1);
+        uint maxVal = (1 << bitsNeeded) - 1;
+
+        for (uint i = 0; i < N; ++i) {
+            uint index;
+            uint bitsToShift = i * bitsNeeded;
+
+            // Extract bits for the index
+            index = (R >> bitsToShift) & maxVal;
+
+            // Adjust index if it's out of range
+            while (index >= M) {
+                index = (index + 1) % M;
+            }
+
+            // Check for duplicate
+            for (uint j = 0; j < i; ++j) {
+                if (indices[j] == index) {
+                    index = (index + 1) % M;
+                    j = 0; // Restart checking for duplicates
+                }
+            }
+
+            indices[i] = index;
+        }
+
+        return indices;
     }
     function getCouncilVotes(uint proposalId)
         private view returns(CouncilVotes[] memory){
@@ -517,154 +610,7 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
         }
         return cvs;
     }
-    function buildGroupVotes(CouncilVotes memory cv)
-        private pure returns(CouncilVotes memory rtn)
-    {
-        uint targetGroup = 0;
-        while(targetGroup < cv.votes.length){
-            uint k = 0;
-            uint m = 0;
-            while(k < cv.votes[targetGroup].votes.length){
-                if(cv.votes[targetGroup].votes[k].timestamp != 0){
-                    m++;
-                }
-                k++;
-            }
-            Vote[] memory cggv = new Vote[](m);
-            k = 0;m = 0;
-            while(k < cv.votes[targetGroup].votes.length){
-                if(cv.votes[targetGroup].votes[k].timestamp != 0){
-                    cggv[m] = cv.votes[targetGroup].votes[k];
-                    m++;
-                }
-                k++;
-            }          
-            cv.votes[targetGroup].votes = cggv;
-            targetGroup++;
-        }
-        rtn = cv;
-    }
-    function populateRandomGroupVotes(
-        CouncilVotes memory cv,
-        CouncilGroupVotes[] memory cgv, 
-        uint colSize,
-        uint rdn2)
-        private pure returns(CouncilGroupVotes[] memory rtn)
-    {
-        uint[] memory previousIndexs = new uint[](cv.votes.length);
-        uint j = 0;
-        while(j < colSize){
-            uint index = (rdn2 % cv.votes.length);
-            uint n = 0;
-            bool doAdd = true;
-            while(n < j){
-                if(previousIndexs[n] == index){
-                    doAdd = false;
-                    break;
-                }
-                n++;
-            }
-            if(doAdd)
-            {
-                cgv[j] = cv.votes[index - 1];
-                previousIndexs[j] = index;
-            }
-            j++;
-        }
-        rtn = cgv;
-    }
-    function populateGroupVote(
-        CouncilVotes memory cv, 
-        CouncilGroupVotes[] memory cgv,
-        uint colSize,
-        uint rdn2,
-        bool doAvg)
-        private pure returns(CouncilGroupVotes[] memory rtn)
-    {
-        uint j = 0;
-        while(j < colSize && j < cv.votes.length)
-        {
-            cgv[j] = cv.votes[j]; 
-            j++;
-        }
-        uint r = 0;
-        while(r < cgv.length){
-            uint cvVoteNumerator = cv.votingParameters.voteNumerator;
-            uint cvVoteDenom = cv.votingParameters.voteDenominator;
-            CouncilGroupVotes memory cf = cgv[r];
-            uint groupColSize = cf.votes.length;
-            if(cv.votingParameters.outputCountForMember > 0 && groupColSize > cv.votingParameters.outputCountForMember)
-                groupColSize = cv.votingParameters.outputCountForMember;
-            Vote[] memory vts = new Vote[](groupColSize);
-            vts = applyGroupRandominzation(cv, cf, vts, rdn2, groupColSize);
-            cf = populateGroupVote(vts, cf, cvVoteNumerator, cvVoteDenom, doAvg);
-            cgv[r] = cf;
-            r++;
-        }
-        rtn = cgv;
-    }
-    function applyGroupRandominzation(
-        CouncilVotes memory cv, 
-        CouncilGroupVotes memory cf,
-        Vote[] memory vts,
-        uint rdn2, 
-        uint groupColSize)
-        private pure returns(Vote[] memory rtn)
-    {
-        if(cv.votingParameters.randomizeByMember)
-        {
-            uint[] memory prevIndexs = new uint[](cf.votes.length);
-            uint j = 0;
-            while(j < groupColSize){
-                uint index = (rdn2 % cf.votes.length);
-                uint m = 0;
-                bool doAdd = true;
-                while(m < j){
-                    if(prevIndexs[m] == index){
-                        doAdd = false;
-                        break;
-                    }
-                    m++;
-                }
-                if(doAdd)
-                {
-                    vts[j] = cf.votes[index];
-                    prevIndexs[j] = index;
-                }
-                j++;
-            }
-        }
-        rtn = vts;
-    }
-    function populateGroupVote(Vote[] memory vts, 
-        CouncilGroupVotes memory cf, 
-        uint cvVoteNumerator, 
-        uint cvVoteDenom,
-        bool doAvg)
-        private pure returns(CouncilGroupVotes memory rtn)
-    {
-        uint g = 0;
-        int rs = 0;
-        int[] memory rrs = new int[](vts.length);
-        while(g < vts.length){
-            int v = 0;
-            if(vts[g].voteCasted)
-                v = 1;
-            else
-                v = -1;
-            int rr = multiply(Math.mulDiv(100000, cvVoteNumerator, cvVoteDenom), v);
-            rs += rr;
-            rrs[g] = rr;
-            g++;
-        }
-        int ss = cf.score;
-        if(doAvg)
-            ss += calculateAverage(rrs);
-        else
-            ss+= rs;
-        cf.score = ss;
-        rtn = cf;
-    }
+    
     function populateGroupScore(CouncilVotes[] memory cvs)
         private pure returns(CouncilVotes[] memory rtn)
     {
@@ -677,10 +623,30 @@ contract CYBERCOM is ReentrancyGuard, AccessControl, VRFConsumerBaseV2  {
 
             while(g < cv.votes.length){
                 CouncilGroupVotes memory cgv = cv.votes[g];
+                uint b = 0;
+                int rrs = 0;
+                int[] memory rds = new int[](cgv.votes.length);
+                while(b < cgv.votes.length){
+                    Vote memory vv = cgv.votes[b];
+                    int vvn = 0;
+                    if(vv.voteCasted)
+                        vvn = 1;
+                    else
+                        vvn = -1;
+                    rrs = multiply(Math.mulDiv(100000, cv.votingParameters.voteNumerator, cv.votingParameters.voteDenominator), vvn);
+                    rds[b] = rrs;
+                    b++;
+                }
+                if(cv.votingParameters.avgVotes)
+                    cgv.score += calculateAverage(rds);
+                else
+                    cgv.score += rrs;
+                
                 int v = cgv.score;
-                int rr = multiply(Math.mulDiv(100000, cv.votingParameters.voteNumerator, cv.votingParameters.voteDenominator), v);
+                int rr = multiply(Math.mulDiv(100000, cv.votingParameters.sumNumerator, cv.votingParameters.sumDenominator), v);
                 results[g] = rr;
                 result += rr;
+                cv.votes[g] = cgv;
                 g++;
             }
             if(cv.votingParameters.avgVotes)

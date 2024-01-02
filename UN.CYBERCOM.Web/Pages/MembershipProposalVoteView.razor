@@ -1,0 +1,22 @@
+﻿@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+@using System.Threading;
+@inherits ReactiveComponentBase<MembershipProposalViewModel>
+@if(ViewModel != null)
+{
+    @if (ViewModel.CanVote)
+    {
+        <TelerikCheckBox TValue="bool" @bind-Value="ViewModel.CastVote"/>
+        <TelerikButton OnClick="ViewModel.Vote.BindCommand<MouseEventArgs>()">Vote</TelerikButton>
+    }
+    <ul>
+        @foreach(var vote in ViewModel.MembershipVotes)
+        {
+            <li><b>@vote.Nation.Name:</b>@vote.CastedVote</li>
+        }
+    </ul>
+}
+@code {
+
+}
