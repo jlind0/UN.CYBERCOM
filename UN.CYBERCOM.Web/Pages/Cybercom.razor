@@ -12,8 +12,7 @@
     <AlertView Alert="ViewModel.Alert" />
     @if(ViewModel.AccountNumber != null)
     {
-        <h5>@ViewModel.AccountNumber</h5>
-        <h5>@ViewModel.ContractAddress</h5>
+        <h5>Wallet: @ViewModel.AccountNumber</h5>
         @if (ViewModel.IsLoading)
         {
             <p>Loading...</p>
@@ -24,7 +23,9 @@
         }
         else
         {
-            <p>@ViewModel.ContractAddress</p>
+            <p>Contract: @ViewModel.ContractAddress</p>
+            <p>Voting: @ViewModel.VotingAddress</p>
+            <p>Council Management: @ViewModel.CouncilManagerAddress</p>
             <button @onclick="ViewModel.Load.BindCommand<MouseEventArgs>()" type="button">Reload</button>
             <TelerikDropDownList TItem="CouncilViewModel" TValue="string" Data="ViewModel.Councils" TextField="Name" @bind-Value="ViewModel.SelectedCouncilRole" ValueField="Role"/>
             @if (ViewModel.SelectedCouncil != null)
@@ -82,6 +83,7 @@
                             {
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).CompleteTally.BindCommand<MouseEventArgs>()">Complete</TelerikButton>
                             }
+                            <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -93,6 +95,11 @@
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn Field="Duration" Title="Voting Experation Date" />
+                    <GridColumn>
+                        <Template>
+                            <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                        </Template>
+                    </GridColumn>
                 </GridColumns>
             </TelerikGrid>
             <h2>Approved</h2>
@@ -102,6 +109,11 @@
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn Field="Duration" Title="Voting Experation Date" />
+                    <GridColumn>
+                        <Template>
+                            <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                        </Template>
+                    </GridColumn>
                 </GridColumns>
             </TelerikGrid>
         }

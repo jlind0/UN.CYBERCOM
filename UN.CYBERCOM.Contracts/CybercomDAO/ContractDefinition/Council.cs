@@ -5,7 +5,7 @@ using System.Numerics;
 using Nethereum.Hex.HexTypes;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+namespace UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition
 {
     public partial class Council : CouncilBase { }
 
@@ -17,9 +17,7 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
         public virtual byte[] Role { get; set; }
         [Parameter("tuple", "votingParameters", 3)]
         public virtual VotingParameters VotingParameters { get; set; }
-        [Parameter("uint256", "groupsCount", 4)]
-        public virtual BigInteger GroupsCount { get; set; }
-        [Parameter("tuple[]", "groups", 5)]
+        [Parameter("tuple[]", "groups", 4)]
         public virtual List<CouncilGroup> Groups { get; set; }
     }
 }

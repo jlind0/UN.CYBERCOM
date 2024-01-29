@@ -12,7 +12,7 @@ using Nethereum.Contracts;
 using System.Threading;
 using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition;
 
-namespace UN.CYBERCOM.Contracts.CYBERCOM.OLD
+namespace UN.CYBERCOM.Contracts.CYBERCOM
 {
     public partial class CybercomService
     {
@@ -295,6 +295,32 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM.OLD
                 hasRoleFunction.Account = account;
             
             return ContractHandler.QueryAsync<HasRoleFunction, bool>(hasRoleFunction, blockParameter);
+        }
+
+        public Task<string> LoadOldCouncilsRequestAsync(LoadOldCouncilsFunction loadOldCouncilsFunction)
+        {
+             return ContractHandler.SendRequestAsync(loadOldCouncilsFunction);
+        }
+
+        public Task<TransactionReceipt> LoadOldCouncilsRequestAndWaitForReceiptAsync(LoadOldCouncilsFunction loadOldCouncilsFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(loadOldCouncilsFunction, cancellationToken);
+        }
+
+        public Task<string> LoadOldCouncilsRequestAsync(List<Council> oldCouncils)
+        {
+            var loadOldCouncilsFunction = new LoadOldCouncilsFunction();
+                loadOldCouncilsFunction.OldCouncils = oldCouncils;
+            
+             return ContractHandler.SendRequestAsync(loadOldCouncilsFunction);
+        }
+
+        public Task<TransactionReceipt> LoadOldCouncilsRequestAndWaitForReceiptAsync(List<Council> oldCouncils, CancellationTokenSource cancellationToken = null)
+        {
+            var loadOldCouncilsFunction = new LoadOldCouncilsFunction();
+                loadOldCouncilsFunction.OldCouncils = oldCouncils;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(loadOldCouncilsFunction, cancellationToken);
         }
 
         public Task<BigInteger> MultiplyQueryAsync(MultiplyFunction multiplyFunction, BlockParameter blockParameter = null)

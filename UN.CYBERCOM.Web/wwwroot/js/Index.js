@@ -1,5 +1,4 @@
-﻿window.web3 = new Web3(ethereum);
-window.web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+﻿
 var dotNetObject = undefined;
 var connectedAccount = undefined;
 const connectWallet = async () => {

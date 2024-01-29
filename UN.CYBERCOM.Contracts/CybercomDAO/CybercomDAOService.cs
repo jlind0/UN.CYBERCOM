@@ -10,64 +10,42 @@ using Nethereum.Contracts.CQS;
 using Nethereum.Contracts.ContractHandlers;
 using Nethereum.Contracts;
 using System.Threading;
-using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition;
+using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition;
 
-namespace UN.CYBERCOM.Contracts.CYBERCOM
+namespace UN.CYBERCOM.Contracts.CybercomDAO
 {
-    public partial class CybercomService
+    public partial class CybercomDAOService
     {
-        public static Task<TransactionReceipt> DeployContractAndWaitForReceiptAsync(Nethereum.Web3.Web3 web3, CybercomDeployment cybercomDeployment, CancellationTokenSource cancellationTokenSource = null)
+        public static Task<TransactionReceipt> DeployContractAndWaitForReceiptAsync(Nethereum.Web3.Web3 web3, CybercomDAODeployment cybercomDAODeployment, CancellationTokenSource cancellationTokenSource = null)
         {
-            return web3.Eth.GetContractDeploymentHandler<CybercomDeployment>().SendRequestAndWaitForReceiptAsync(cybercomDeployment, cancellationTokenSource);
+            return web3.Eth.GetContractDeploymentHandler<CybercomDAODeployment>().SendRequestAndWaitForReceiptAsync(cybercomDAODeployment, cancellationTokenSource);
         }
 
-        public static Task<string> DeployContractAsync(Nethereum.Web3.Web3 web3, CybercomDeployment cybercomDeployment)
+        public static Task<string> DeployContractAsync(Nethereum.Web3.Web3 web3, CybercomDAODeployment cybercomDAODeployment)
         {
-            return web3.Eth.GetContractDeploymentHandler<CybercomDeployment>().SendRequestAsync(cybercomDeployment);
+            return web3.Eth.GetContractDeploymentHandler<CybercomDAODeployment>().SendRequestAsync(cybercomDAODeployment);
         }
 
-        public static async Task<CybercomService> DeployContractAndGetServiceAsync(Nethereum.Web3.Web3 web3, CybercomDeployment cybercomDeployment, CancellationTokenSource cancellationTokenSource = null)
+        public static async Task<CybercomDAOService> DeployContractAndGetServiceAsync(Nethereum.Web3.Web3 web3, CybercomDAODeployment cybercomDAODeployment, CancellationTokenSource cancellationTokenSource = null)
         {
-            var receipt = await DeployContractAndWaitForReceiptAsync(web3, cybercomDeployment, cancellationTokenSource);
-            return new CybercomService(web3, receipt.ContractAddress);
+            var receipt = await DeployContractAndWaitForReceiptAsync(web3, cybercomDAODeployment, cancellationTokenSource);
+            return new CybercomDAOService(web3, receipt.ContractAddress);
         }
 
         protected Nethereum.Web3.IWeb3 Web3{ get; }
 
         public ContractHandler ContractHandler { get; }
 
-        public CybercomService(Nethereum.Web3.Web3 web3, string contractAddress)
+        public CybercomDAOService(Nethereum.Web3.Web3 web3, string contractAddress)
         {
             Web3 = web3;
             ContractHandler = web3.Eth.GetContractHandler(contractAddress);
         }
 
-        public CybercomService(Nethereum.Web3.IWeb3 web3, string contractAddress)
+        public CybercomDAOService(Nethereum.Web3.IWeb3 web3, string contractAddress)
         {
             Web3 = web3;
             ContractHandler = web3.Eth.GetContractHandler(contractAddress);
-        }
-
-        public Task<byte[]> BrokerRoleQueryAsync(BrokerRoleFunction brokerRoleFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<BrokerRoleFunction, byte[]>(brokerRoleFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> BrokerRoleQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<BrokerRoleFunction, byte[]>(null, blockParameter);
-        }
-
-        public Task<byte[]> CentralRoleQueryAsync(CentralRoleFunction centralRoleFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<CentralRoleFunction, byte[]>(centralRoleFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> CentralRoleQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<CentralRoleFunction, byte[]>(null, blockParameter);
         }
 
         public Task<byte[]> DefaultAdminRoleQueryAsync(DefaultAdminRoleFunction defaultAdminRoleFunction, BlockParameter blockParameter = null)
@@ -79,53 +57,6 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
         public Task<byte[]> DefaultAdminRoleQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<DefaultAdminRoleFunction, byte[]>(null, blockParameter);
-        }
-
-        public Task<byte[]> EmergingRoleQueryAsync(EmergingRoleFunction emergingRoleFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<EmergingRoleFunction, byte[]>(emergingRoleFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> EmergingRoleQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<EmergingRoleFunction, byte[]>(null, blockParameter);
-        }
-
-        public Task<byte[]> GeneralRoleQueryAsync(GeneralRoleFunction generalRoleFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<GeneralRoleFunction, byte[]>(generalRoleFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> GeneralRoleQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<GeneralRoleFunction, byte[]>(null, blockParameter);
-        }
-
-        public Task<byte[]> PowerRoleQueryAsync(PowerRoleFunction powerRoleFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<PowerRoleFunction, byte[]>(powerRoleFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> PowerRoleQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<PowerRoleFunction, byte[]>(null, blockParameter);
-        }
-
-        public Task<BigInteger> CalculateAverageQueryAsync(CalculateAverageFunction calculateAverageFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<CalculateAverageFunction, BigInteger>(calculateAverageFunction, blockParameter);
-        }
-
-        
-        public Task<BigInteger> CalculateAverageQueryAsync(List<BigInteger> numbers, BlockParameter blockParameter = null)
-        {
-            var calculateAverageFunction = new CalculateAverageFunction();
-                calculateAverageFunction.Numbers = numbers;
-            
-            return ContractHandler.QueryAsync<CalculateAverageFunction, BigInteger>(calculateAverageFunction, blockParameter);
         }
 
         public Task<string> CompleteVotingRequestAsync(CompleteVotingFunction completeVotingFunction)
@@ -152,6 +83,17 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
                 completeVotingFunction.ProposalId = proposalId;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(completeVotingFunction, cancellationToken);
+        }
+
+        public Task<string> CouncilManagementAddressQueryAsync(CouncilManagementAddressFunction councilManagementAddressFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<CouncilManagementAddressFunction, string>(councilManagementAddressFunction, blockParameter);
+        }
+
+        
+        public Task<string> CouncilManagementAddressQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<CouncilManagementAddressFunction, string>(null, blockParameter);
         }
 
         public Task<GetApprovedMembershipRequestsOutputDTO> GetApprovedMembershipRequestsQueryAsync(GetApprovedMembershipRequestsFunction getApprovedMembershipRequestsFunction, BlockParameter blockParameter = null)
@@ -185,16 +127,6 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
         public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<GetNationsOutputDTO> GetNationsQueryAsync(GetNationsFunction getNationsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetNationsFunction, GetNationsOutputDTO>(getNationsFunction, blockParameter);
-        }
-
-        public Task<GetNationsOutputDTO> GetNationsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetNationsFunction, GetNationsOutputDTO>(null, blockParameter);
         }
 
         public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(GetPendingMembershipRequestsFunction getPendingMembershipRequestsFunction, BlockParameter blockParameter = null)
@@ -297,47 +229,6 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
             return ContractHandler.QueryAsync<HasRoleFunction, bool>(hasRoleFunction, blockParameter);
         }
 
-        public Task<string> LoadOldCouncilsRequestAsync(LoadOldCouncilsFunction loadOldCouncilsFunction)
-        {
-             return ContractHandler.SendRequestAsync(loadOldCouncilsFunction);
-        }
-
-        public Task<TransactionReceipt> LoadOldCouncilsRequestAndWaitForReceiptAsync(LoadOldCouncilsFunction loadOldCouncilsFunction, CancellationTokenSource cancellationToken = null)
-        {
-             return ContractHandler.SendRequestAndWaitForReceiptAsync(loadOldCouncilsFunction, cancellationToken);
-        }
-
-        public Task<string> LoadOldCouncilsRequestAsync(List<Council> oldCouncils)
-        {
-            var loadOldCouncilsFunction = new LoadOldCouncilsFunction();
-                loadOldCouncilsFunction.OldCouncils = oldCouncils;
-            
-             return ContractHandler.SendRequestAsync(loadOldCouncilsFunction);
-        }
-
-        public Task<TransactionReceipt> LoadOldCouncilsRequestAndWaitForReceiptAsync(List<Council> oldCouncils, CancellationTokenSource cancellationToken = null)
-        {
-            var loadOldCouncilsFunction = new LoadOldCouncilsFunction();
-                loadOldCouncilsFunction.OldCouncils = oldCouncils;
-            
-             return ContractHandler.SendRequestAndWaitForReceiptAsync(loadOldCouncilsFunction, cancellationToken);
-        }
-
-        public Task<BigInteger> MultiplyQueryAsync(MultiplyFunction multiplyFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<MultiplyFunction, BigInteger>(multiplyFunction, blockParameter);
-        }
-
-        
-        public Task<BigInteger> MultiplyQueryAsync(BigInteger a, BigInteger b, BlockParameter blockParameter = null)
-        {
-            var multiplyFunction = new MultiplyFunction();
-                multiplyFunction.A = a;
-                multiplyFunction.B = b;
-            
-            return ContractHandler.QueryAsync<MultiplyFunction, BigInteger>(multiplyFunction, blockParameter);
-        }
-
         public Task<string> PerformVoteRequestAsync(PerformVoteFunction performVoteFunction)
         {
              return ContractHandler.SendRequestAsync(performVoteFunction);
@@ -348,20 +239,20 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
              return ContractHandler.SendRequestAndWaitForReceiptAsync(performVoteFunction, cancellationToken);
         }
 
-        public Task<string> PerformVoteRequestAsync(BigInteger proposalId, bool voteCasted)
+        public Task<string> PerformVoteRequestAsync(BigInteger proposalId, bool voteCast)
         {
             var performVoteFunction = new PerformVoteFunction();
                 performVoteFunction.ProposalId = proposalId;
-                performVoteFunction.VoteCasted = voteCasted;
+                performVoteFunction.VoteCast = voteCast;
             
              return ContractHandler.SendRequestAsync(performVoteFunction);
         }
 
-        public Task<TransactionReceipt> PerformVoteRequestAndWaitForReceiptAsync(BigInteger proposalId, bool voteCasted, CancellationTokenSource cancellationToken = null)
+        public Task<TransactionReceipt> PerformVoteRequestAndWaitForReceiptAsync(BigInteger proposalId, bool voteCast, CancellationTokenSource cancellationToken = null)
         {
             var performVoteFunction = new PerformVoteFunction();
                 performVoteFunction.ProposalId = proposalId;
-                performVoteFunction.VoteCasted = voteCasted;
+                performVoteFunction.VoteCast = voteCast;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(performVoteFunction, cancellationToken);
         }
@@ -390,34 +281,6 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
                 prepareTallyFunction.ProposalId = proposalId;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(prepareTallyFunction, cancellationToken);
-        }
-
-        public Task<string> RawFulfillRandomWordsRequestAsync(RawFulfillRandomWordsFunction rawFulfillRandomWordsFunction)
-        {
-             return ContractHandler.SendRequestAsync(rawFulfillRandomWordsFunction);
-        }
-
-        public Task<TransactionReceipt> RawFulfillRandomWordsRequestAndWaitForReceiptAsync(RawFulfillRandomWordsFunction rawFulfillRandomWordsFunction, CancellationTokenSource cancellationToken = null)
-        {
-             return ContractHandler.SendRequestAndWaitForReceiptAsync(rawFulfillRandomWordsFunction, cancellationToken);
-        }
-
-        public Task<string> RawFulfillRandomWordsRequestAsync(BigInteger requestId, List<BigInteger> randomWords)
-        {
-            var rawFulfillRandomWordsFunction = new RawFulfillRandomWordsFunction();
-                rawFulfillRandomWordsFunction.RequestId = requestId;
-                rawFulfillRandomWordsFunction.RandomWords = randomWords;
-            
-             return ContractHandler.SendRequestAsync(rawFulfillRandomWordsFunction);
-        }
-
-        public Task<TransactionReceipt> RawFulfillRandomWordsRequestAndWaitForReceiptAsync(BigInteger requestId, List<BigInteger> randomWords, CancellationTokenSource cancellationToken = null)
-        {
-            var rawFulfillRandomWordsFunction = new RawFulfillRandomWordsFunction();
-                rawFulfillRandomWordsFunction.RequestId = requestId;
-                rawFulfillRandomWordsFunction.RandomWords = randomWords;
-            
-             return ContractHandler.SendRequestAndWaitForReceiptAsync(rawFulfillRandomWordsFunction, cancellationToken);
         }
 
         public Task<string> RenounceRoleRequestAsync(RenounceRoleFunction renounceRoleFunction)
@@ -514,6 +377,17 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM
                 supportsInterfaceFunction.InterfaceId = interfaceId;
             
             return ContractHandler.QueryAsync<SupportsInterfaceFunction, bool>(supportsInterfaceFunction, blockParameter);
+        }
+
+        public Task<string> VotingAddressQueryAsync(VotingAddressFunction votingAddressFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<VotingAddressFunction, string>(votingAddressFunction, blockParameter);
+        }
+
+        
+        public Task<string> VotingAddressQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<VotingAddressFunction, string>(null, blockParameter);
         }
     }
 }

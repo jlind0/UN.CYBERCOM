@@ -5,7 +5,7 @@ using System.Numerics;
 using Nethereum.Hex.HexTypes;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+namespace UN.CYBERCOM.Contracts.CouncilManager.ContractDefinition
 {
     public partial class Nation : NationBase { }
 

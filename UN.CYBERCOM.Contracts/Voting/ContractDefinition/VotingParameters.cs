@@ -5,7 +5,7 @@ using System.Numerics;
 using Nethereum.Hex.HexTypes;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+namespace UN.CYBERCOM.Contracts.Voting.ContractDefinition
 {
     public partial class VotingParameters : VotingParametersBase { }
 
@@ -15,10 +15,10 @@ namespace UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
         public virtual bool RandomizeByGroup { get; set; }
         [Parameter("bool", "randomizeByMember", 2)]
         public virtual bool RandomizeByMember { get; set; }
-        [Parameter("uint256", "outputCountForGroup", 3)]
-        public virtual BigInteger OutputCountForGroup { get; set; }
-        [Parameter("uint256", "outputCountForMember", 4)]
-        public virtual BigInteger OutputCountForMember { get; set; }
+        [Parameter("uint32", "outputCountForGroup", 3)]
+        public virtual uint OutputCountForGroup { get; set; }
+        [Parameter("uint32", "outputCountForMember", 4)]
+        public virtual uint OutputCountForMember { get; set; }
         [Parameter("uint256", "voteDenominator", 5)]
         public virtual BigInteger VoteDenominator { get; set; }
         [Parameter("uint256", "voteNumerator", 6)]

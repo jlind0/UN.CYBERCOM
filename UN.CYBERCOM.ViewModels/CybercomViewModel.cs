@@ -3,7 +3,6 @@ using DynamicData.Binding;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Contracts;
 using Nethereum.Web3;
-using Nethereum.Contracts;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -15,10 +14,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using UN.CYBERCOM.Contracts.CYBERCOM;
-using UNCYOLD = UN.CYBERCOM.Contracts.CYBERCOM.OLD;
-using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition;
-using UNCYOLDCD = UN.CYBERCOM.Contracts.CYBERCOM.OLD.ContractDefinition;
+using UN.CYBERCOM.Contracts.CybercomDAO;
+using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition;
+
 using AutoMapper;
 
 namespace UN.CYBERCOM.ViewModels
@@ -37,8 +35,8 @@ namespace UN.CYBERCOM.ViewModels
             get => accountNumber;
             set => this.RaiseAndSetIfChanged(ref accountNumber, value);
         }
-        private CybercomService? cybercomService;
-        public CybercomService? CyberService
+        private CybercomDAOService? cybercomService;
+        public CybercomDAOService? CyberService
         {
             get => cybercomService;
             set => this.RaiseAndSetIfChanged(ref cybercomService, value);
@@ -60,6 +58,18 @@ namespace UN.CYBERCOM.ViewModels
         {
             get => contractAddress;
             set => this.RaiseAndSetIfChanged(ref contractAddress, value);
+        }
+        private string? votingAddress;
+        public string? VotingAddress
+        {
+            get => votingAddress;
+            set => this.RaiseAndSetIfChanged(ref votingAddress, value);
+        }
+        private string? councilManagerAddress;
+        public string? CouncilManagerAddress
+        {
+            get => councilManagerAddress;
+            set => this.RaiseAndSetIfChanged(ref councilManagerAddress, value);
         }
         private string? selectedCouncilRole;
         public string? SelectedCouncilRole
@@ -112,7 +122,10 @@ namespace UN.CYBERCOM.ViewModels
                 if (!IsDeployed)
                     return;
                 if (p.Value != null)
-                    CyberService = new CybercomService(W3, ContractAddress ?? throw new InvalidDataException());
+                {
+                    CyberService = new CybercomDAOService(W3, ContractAddress ?? throw new InvalidDataException());
+                    
+                }
                 else
                     CyberService = null;
             }).DisposeWith(disposable);
@@ -179,25 +192,11 @@ namespace UN.CYBERCOM.ViewModels
                 IsLoading = true;
                 if (!IsDeployed)
                 {
-                    GetCouncilsOutputDTO? oldData = null;
-                    if (OldContractAddress != null)
-                    {
-                        UNCYOLD.CybercomService cs = new UNCYOLD.CybercomService(W3, OldContractAddress);
-                        oldData = await cs.GetCouncilsQueryAsync();
-                    }
-                    var rcpt = await CybercomService.DeployContractAndWaitForReceiptAsync(W3, new CybercomDeployment()
+                    var rcpt = await CybercomDAOService.DeployContractAndWaitForReceiptAsync(W3, new CybercomDAODeployment()
                     {
                         SubscriptionId = SubscriptionId
                     });
                     ContractAddress = rcpt.ContractAddress;
-                    if (oldData != null) 
-                    {
-                        CybercomService cs = new CybercomService(W3, ContractAddress);
-                        await cs.LoadOldCouncilsRequestAndWaitForReceiptAsync(new LoadOldCouncilsFunction()
-                        {
-                            OldCouncils = oldData.ReturnValue1
-                        });
-                    }
                     IsDeployed = true;
                 }
             }
@@ -219,17 +218,15 @@ namespace UN.CYBERCOM.ViewModels
                     return;
                 if(CyberService != null)
                 {
+                    VotingAddress = await CyberService.VotingAddressQueryAsync();
+                    CouncilManagerAddress = await CyberService.CouncilManagementAddressQueryAsync();
                     Councils.Clear();
                     var councilDto = await CyberService.GetCouncilsQueryAsync(new GetCouncilsFunction()
                     {
                         FromAddress = AccountNumber
                     });
                     Nations.Clear();
-                    var nationDto = await CyberService.GetNationsQueryAsync(new GetNationsFunction()
-                    {
-                        FromAddress = AccountNumber
-                    });
-                    Nations.AddRange(nationDto.ReturnValue1);
+                    Nations.AddRange(councilDto.ReturnValue1.SelectMany(c => c.Groups.SelectMany(g => g.Members)));
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
                     PendingMembershipProposals.Clear();
                     var pendingDto = await CyberService.GetPendingMembershipRequestsQueryAsync(new GetPendingMembershipRequestsFunction()
@@ -326,11 +323,11 @@ namespace UN.CYBERCOM.ViewModels
         }
         public string ProposalId
         {
-            get => Data.Proposal.Id.ToString();
+            get => Data.Id.ToString();
         }
         public DateTime Duration
         {
-            get => Data.Proposal.Duration.FromUnixTimestamp();
+            get => Data.Duration.FromUnixTimestamp();
         }
         public ReactiveCommand<Unit, Unit> Tally { get; }
         public ReactiveCommand<Unit, Unit> CompleteTally { get; }
@@ -344,7 +341,7 @@ namespace UN.CYBERCOM.ViewModels
         }
         public bool CanTally
         {
-            get => ((ApprovalStatus)Data.Proposal.Status) == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !Data.Proposal.IsProcessing;
+            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !Data.IsProcessing;
         }
         public bool CanVote
         {
@@ -352,7 +349,7 @@ namespace UN.CYBERCOM.ViewModels
         }
         public bool CanCompleteTally
         {
-            get => ((ApprovalStatus)Data.Proposal.Status) == ApprovalStatus.Ready;
+            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Ready;
         }
         protected CybercomViewModel Parent { get; }
         public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council)
@@ -376,11 +373,11 @@ namespace UN.CYBERCOM.ViewModels
                 {
                     var votesDto = await Parent.CyberService.GetProposalVotesQueryAsync(new GetProposalVotesFunction()
                     {
-                        ProposalId = Data.Proposal.Id,
+                        ProposalId = Data.Id,
                         FromAddress = Parent.AccountNumber
                     });
                     MembershipVotes.Clear();
-                    MembershipVotes.AddRange(votesDto.ReturnValue1.Where(v => v.Votes.Count > 0).SelectMany(v => v.Votes).Where(v => v.Votes.Count > 0).SelectMany(v => v.Votes).Select(
+                    MembershipVotes.AddRange(votesDto.ReturnValue1.Select(
                         v => new MembershipVoteProposalViewModel(Parent, this, v)));
                 }
             }
@@ -396,10 +393,10 @@ namespace UN.CYBERCOM.ViewModels
                 var tran = new PerformVoteFunction()
                 {
                     FromAddress = Parent.AccountNumber,
-                    ProposalId = Data.Proposal.Id,
+                    ProposalId = Data.Id,
                     AmountToSend = 0,
                     Gas = 1500000,
-                    VoteCasted = CastVote
+                    VoteCast = CastVote
                 };
                 var data = Convert.ToHexString(tran.GetCallData()).ToLower();
                 var signedData = await SignatureRequest.Handle(data).GetAwaiter();
@@ -419,7 +416,7 @@ namespace UN.CYBERCOM.ViewModels
                     var tran = new CompleteVotingFunction()
                     {
                         FromAddress = Parent.AccountNumber,
-                        ProposalId = Data.Proposal.Id,
+                        ProposalId = Data.Id,
                         AmountToSend = 0,
                         Gas = 1500000
                     };
@@ -442,7 +439,7 @@ namespace UN.CYBERCOM.ViewModels
                     var tran = new PrepareTallyFunction()
                     {
                         FromAddress = Parent.AccountNumber,
-                        ProposalId = Data.Proposal.Id,
+                        ProposalId = Data.Id,
                         AmountToSend = 0,
                         Gas = 1500000
                     };
