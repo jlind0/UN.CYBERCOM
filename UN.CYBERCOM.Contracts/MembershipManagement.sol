@@ -53,6 +53,17 @@ library MembershipManagement {
         uint duration;
         ApprovalStatus status;
         bool isProcessing;
+        bool votingStarted;
+        address owner;
+        address proposalAddress;
+    }
+    struct Doc{
+        string  title;
+        string  url;
+        bytes32  dochash;
+        bytes  signature;
+        address  signer;
+        address docAddress;
     }
     struct CouncilVotes{
         bytes32 councilId;
@@ -71,6 +82,7 @@ library MembershipManagement {
         UpdateVotingParameters
     }
     enum ApprovalStatus {
+        Entered,
         Pending,
         Ready,
         Approved,

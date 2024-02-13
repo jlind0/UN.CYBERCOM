@@ -27,10 +27,35 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
 
     }
 
+    public partial class AddDocumentFunction : AddDocumentFunctionBase { }
+
+    [Function("addDocument")]
+    public class AddDocumentFunctionBase : FunctionMessage
+    {
+        [Parameter("address", "signer", 1)]
+        public virtual string Signer { get; set; }
+        [Parameter("string", "title", 2)]
+        public virtual string Title { get; set; }
+        [Parameter("string", "url", 3)]
+        public virtual string Url { get; set; }
+        [Parameter("bytes32", "docHash", 4)]
+        public virtual byte[] DocHash { get; set; }
+        [Parameter("bytes", "signature", 5)]
+        public virtual byte[] Signature { get; set; }
+    }
+
     public partial class DurationFunction : DurationFunctionBase { }
 
     [Function("duration", "uint256")]
     public class DurationFunctionBase : FunctionMessage
+    {
+
+    }
+
+    public partial class GetDocumentsFunction : GetDocumentsFunctionBase { }
+
+    [Function("getDocuments", typeof(GetDocumentsOutputDTO))]
+    public class GetDocumentsFunctionBase : FunctionMessage
     {
 
     }
@@ -55,6 +80,14 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
 
     [Function("isProcessing", "bool")]
     public class IsProcessingFunctionBase : FunctionMessage
+    {
+
+    }
+
+    public partial class OwnerFunction : OwnerFunctionBase { }
+
+    [Function("owner", "address")]
+    public class OwnerFunctionBase : FunctionMessage
     {
 
     }
@@ -93,6 +126,15 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
         public virtual BigInteger Random { get; set; }
     }
 
+    public partial class StartVotingFunction : StartVotingFunctionBase { }
+
+    [Function("startVoting")]
+    public class StartVotingFunctionBase : FunctionMessage
+    {
+        [Parameter("address", "sender", 1)]
+        public virtual string Sender { get; set; }
+    }
+
     public partial class StatusFunction : StatusFunctionBase { }
 
     [Function("status", "uint8")]
@@ -129,6 +171,16 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
         public virtual string Member { get; set; }
     }
 
+    public partial class VotingStartedFunction : VotingStartedFunctionBase { }
+
+    [Function("votingStarted", "bool")]
+    public class VotingStartedFunctionBase : FunctionMessage
+    {
+
+    }
+
+
+
     public partial class DurationOutputDTO : DurationOutputDTOBase { }
 
     [FunctionOutput]
@@ -136,6 +188,15 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
     {
         [Parameter("uint256", "", 1)]
         public virtual BigInteger ReturnValue1 { get; set; }
+    }
+
+    public partial class GetDocumentsOutputDTO : GetDocumentsOutputDTOBase { }
+
+    [FunctionOutput]
+    public class GetDocumentsOutputDTOBase : IFunctionOutputDTO 
+    {
+        [Parameter("tuple[]", "", 1)]
+        public virtual List<Doc> ReturnValue1 { get; set; }
     }
 
     public partial class GetVotesOutputDTO : GetVotesOutputDTOBase { }
@@ -165,6 +226,15 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
         public virtual bool ReturnValue1 { get; set; }
     }
 
+    public partial class OwnerOutputDTO : OwnerOutputDTOBase { }
+
+    [FunctionOutput]
+    public class OwnerOutputDTOBase : IFunctionOutputDTO 
+    {
+        [Parameter("address", "", 1)]
+        public virtual string ReturnValue1 { get; set; }
+    }
+
     public partial class ProposalTypeOutputDTO : ProposalTypeOutputDTOBase { }
 
     [FunctionOutput]
@@ -182,6 +252,8 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
         [Parameter("uint256", "", 1)]
         public virtual BigInteger ReturnValue1 { get; set; }
     }
+
+
 
 
 
@@ -208,4 +280,13 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
 
 
 
+
+    public partial class VotingStartedOutputDTO : VotingStartedOutputDTOBase { }
+
+    [FunctionOutput]
+    public class VotingStartedOutputDTOBase : IFunctionOutputDTO 
+    {
+        [Parameter("bool", "", 1)]
+        public virtual bool ReturnValue1 { get; set; }
+    }
 }

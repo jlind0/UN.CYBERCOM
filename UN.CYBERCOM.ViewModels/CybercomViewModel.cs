@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UN.CYBERCOM.Contracts.CybercomDAO;
 using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition;
+using UN.CYBERCOM.Contracts.MembershipProposal;
 
 using AutoMapper;
 
@@ -25,6 +26,7 @@ namespace UN.CYBERCOM.ViewModels
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
         public Interaction<string, string> SignatureRequest { get; } = new Interaction<string, string>();
+        public Interaction<string, string> SignData { get; } = new Interaction<string, string>();
         public ReactiveCommand<Unit, Unit> Load { get; }
         public ReactiveCommand<Unit, Unit> Deploy { get; }
         public ReactiveCommand<Unit, Unit> MembershipRequest { get; }
@@ -102,6 +104,7 @@ namespace UN.CYBERCOM.ViewModels
         private readonly CompositeDisposable disposable = new CompositeDisposable();
         public ObservableCollection<CouncilViewModel> Councils { get; } = new ObservableCollection<CouncilViewModel>();
         public ObservableCollection<Nation> Nations { get; } = new ObservableCollection<Nation>();
+        public ObservableCollection<MembershipProposalViewModel> EnteredMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> PendingMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
@@ -228,12 +231,19 @@ namespace UN.CYBERCOM.ViewModels
                     Nations.Clear();
                     Nations.AddRange(councilDto.ReturnValue1.SelectMany(c => c.Groups.SelectMany(g => g.Members)));
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
+                    var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
+                    EnteredMembershipProposals.Clear();
+                    var enteredDto = await CyberService.GetEnteredMembershipRequestsQueryAsync(new GetEnteredMembershipRequestsFunction()
+                    {
+                        FromAddress = AccountNumber
+                    });
+                    EnteredMembershipProposals.AddRange(enteredDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     PendingMembershipProposals.Clear();
                     var pendingDto = await CyberService.GetPendingMembershipRequestsQueryAsync(new GetPendingMembershipRequestsFunction()
                     {
                         FromAddress = AccountNumber
                     });
-                    var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
+                    
                     PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in PendingMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
@@ -303,6 +313,7 @@ namespace UN.CYBERCOM.ViewModels
         public ObservableCollection<MembershipVoteProposalViewModel> MembershipVotes { get; } = new ObservableCollection<MembershipVoteProposalViewModel>();
         public enum ApprovalStatus : byte
         {
+            Entered,
             Pending,
             Ready,
             Approved,
@@ -329,6 +340,7 @@ namespace UN.CYBERCOM.ViewModels
         {
             get => Data.Duration.FromUnixTimestamp();
         }
+        public ReactiveCommand<Unit, Unit> StartVoting { get; }
         public ReactiveCommand<Unit, Unit> Tally { get; }
         public ReactiveCommand<Unit, Unit> CompleteTally { get; }
         public ReactiveCommand<Unit, Unit> Vote { get; }
@@ -345,13 +357,25 @@ namespace UN.CYBERCOM.ViewModels
         }
         public bool CanVote
         {
-            get => !CanTally && !CanCompleteTally;
+            get => !CanTally && !CanCompleteTally && !IsCompleted;
         }
         public bool CanCompleteTally
         {
             get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Ready;
         }
+        public bool IsCompleted
+        {
+            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Rejected || ((ApprovalStatus)Data.Status) == ApprovalStatus.Approved;
+        }
         protected CybercomViewModel Parent { get; }
+        public bool OwnsProposal
+        {
+            get => Parent.AccountNumber == Data.Owner;
+        }
+        public bool CanStartVoting
+        {
+            get => OwnsProposal && ((ApprovalStatus)Data.Status) == ApprovalStatus.Entered;
+        }
         public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council)
         {
             Parent = vm;
@@ -364,6 +388,30 @@ namespace UN.CYBERCOM.ViewModels
             CompleteTally = ReactiveCommand.CreateFromTask(DoCompleteTally);
             Vote = ReactiveCommand.CreateFromTask(DoVote);
             Load = ReactiveCommand.CreateFromTask(DoLoad);
+            StartVoting = ReactiveCommand.CreateFromTask(DoStartVoting);
+        }
+        protected async Task DoStartVoting()
+        {
+            try
+            {
+                if (CanStartVoting)
+                {
+                    StartVotingFunction svf = new StartVotingFunction()
+                    {
+                        ProposalId = Data.Id,
+                        FromAddress = Parent.AccountNumber,
+                        AmountToSend = 0,
+                        Gas = 1500000
+                    };
+                    var data = Convert.ToHexString(svf.GetCallData()).ToLower();
+                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+                }
+            }
+            catch (Exception ex)
+            {
+                await Alert.Handle(ex.Message).GetAwaiter();
+            }
         }
         protected async Task DoLoad()
         {

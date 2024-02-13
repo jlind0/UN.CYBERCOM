@@ -48,6 +48,40 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal
             ContractHandler = web3.Eth.GetContractHandler(contractAddress);
         }
 
+        public Task<string> AddDocumentRequestAsync(AddDocumentFunction addDocumentFunction)
+        {
+             return ContractHandler.SendRequestAsync(addDocumentFunction);
+        }
+
+        public Task<TransactionReceipt> AddDocumentRequestAndWaitForReceiptAsync(AddDocumentFunction addDocumentFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addDocumentFunction, cancellationToken);
+        }
+
+        public Task<string> AddDocumentRequestAsync(string signer, string title, string url, byte[] docHash, byte[] signature)
+        {
+            var addDocumentFunction = new AddDocumentFunction();
+                addDocumentFunction.Signer = signer;
+                addDocumentFunction.Title = title;
+                addDocumentFunction.Url = url;
+                addDocumentFunction.DocHash = docHash;
+                addDocumentFunction.Signature = signature;
+            
+             return ContractHandler.SendRequestAsync(addDocumentFunction);
+        }
+
+        public Task<TransactionReceipt> AddDocumentRequestAndWaitForReceiptAsync(string signer, string title, string url, byte[] docHash, byte[] signature, CancellationTokenSource cancellationToken = null)
+        {
+            var addDocumentFunction = new AddDocumentFunction();
+                addDocumentFunction.Signer = signer;
+                addDocumentFunction.Title = title;
+                addDocumentFunction.Url = url;
+                addDocumentFunction.DocHash = docHash;
+                addDocumentFunction.Signature = signature;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addDocumentFunction, cancellationToken);
+        }
+
         public Task<BigInteger> DurationQueryAsync(DurationFunction durationFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<DurationFunction, BigInteger>(durationFunction, blockParameter);
@@ -57,6 +91,36 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal
         public Task<BigInteger> DurationQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<DurationFunction, BigInteger>(null, blockParameter);
+        }
+
+        public Task<string> GetDocumentsRequestAsync(GetDocumentsFunction getDocumentsFunction)
+        {
+             return ContractHandler.SendRequestAsync(getDocumentsFunction);
+        }
+
+        public Task<string> GetDocumentsRequestAsync()
+        {
+             return ContractHandler.SendRequestAsync<GetDocumentsFunction>();
+        }
+
+        public Task<TransactionReceipt> GetDocumentsRequestAndWaitForReceiptAsync(GetDocumentsFunction getDocumentsFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(getDocumentsFunction, cancellationToken);
+        }
+
+        public Task<TransactionReceipt> GetDocumentsRequestAndWaitForReceiptAsync(CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync<GetDocumentsFunction>(null, cancellationToken);
+        }
+
+        public Task<GetMembershipResponseOutputDTO> GetMembershipResponseQueryAsync(GetMembershipResponseFunction getMembershipResponseFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipResponseFunction, GetMembershipResponseOutputDTO>(getMembershipResponseFunction, blockParameter);
+        }
+
+        public Task<GetMembershipResponseOutputDTO> GetMembershipResponseQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipResponseFunction, GetMembershipResponseOutputDTO>(null, blockParameter);
         }
 
         public Task<GetNationOutputDTO> GetNationQueryAsync(GetNationFunction getNationFunction, BlockParameter blockParameter = null)
@@ -110,6 +174,17 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal
         public Task<bool> IsProcessingQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<IsProcessingFunction, bool>(null, blockParameter);
+        }
+
+        public Task<string> OwnerQueryAsync(OwnerFunction ownerFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<OwnerFunction, string>(ownerFunction, blockParameter);
+        }
+
+        
+        public Task<string> OwnerQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<OwnerFunction, string>(null, blockParameter);
         }
 
         public Task<byte> ProposalTypeQueryAsync(ProposalTypeFunction proposalTypeFunction, BlockParameter blockParameter = null)
@@ -186,6 +261,32 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal
              return ContractHandler.SendRequestAndWaitForReceiptAsync(setRandomNumberFunction, cancellationToken);
         }
 
+        public Task<string> StartVotingRequestAsync(StartVotingFunction startVotingFunction)
+        {
+             return ContractHandler.SendRequestAsync(startVotingFunction);
+        }
+
+        public Task<TransactionReceipt> StartVotingRequestAndWaitForReceiptAsync(StartVotingFunction startVotingFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(startVotingFunction, cancellationToken);
+        }
+
+        public Task<string> StartVotingRequestAsync(string sender)
+        {
+            var startVotingFunction = new StartVotingFunction();
+                startVotingFunction.Sender = sender;
+            
+             return ContractHandler.SendRequestAsync(startVotingFunction);
+        }
+
+        public Task<TransactionReceipt> StartVotingRequestAndWaitForReceiptAsync(string sender, CancellationTokenSource cancellationToken = null)
+        {
+            var startVotingFunction = new StartVotingFunction();
+                startVotingFunction.Sender = sender;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(startVotingFunction, cancellationToken);
+        }
+
         public Task<byte> StatusQueryAsync(StatusFunction statusFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<StatusFunction, byte>(statusFunction, blockParameter);
@@ -260,6 +361,17 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal
                 voteFunction.Member = member;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(voteFunction, cancellationToken);
+        }
+
+        public Task<bool> VotingStartedQueryAsync(VotingStartedFunction votingStartedFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<VotingStartedFunction, bool>(votingStartedFunction, blockParameter);
+        }
+
+        
+        public Task<bool> VotingStartedQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<VotingStartedFunction, bool>(null, blockParameter);
         }
     }
 }

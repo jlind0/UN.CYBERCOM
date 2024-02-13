@@ -62,7 +62,7 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         else if(membershipProposals[request.member] != address(0)){
             MembershipProposal prop = MembershipProposal(membershipProposals[request.member]);
             MembershipManagement.ApprovalStatus aprStatus = prop.status();
-            if(aprStatus == MembershipManagement.ApprovalStatus.Pending || aprStatus == MembershipManagement.ApprovalStatus.Ready)
+            if(aprStatus == MembershipManagement.ApprovalStatus.Entered || aprStatus == MembershipManagement.ApprovalStatus.Pending || aprStatus == MembershipManagement.ApprovalStatus.Ready)
                 revert("Outstanding proposal");
             else if(aprStatus == MembershipManagement.ApprovalStatus.Approved)
                 return address(prop);
@@ -79,7 +79,7 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         if(request.duration < MIN_VOTE_DURATION){
                 request.duration = MIN_VOTE_DURATION;
             }
-        MembershipProposal prop = new MembershipProposal(
+        MembershipProposal prop = new MembershipProposal(msg.sender,
             address(this),
             votingAddress,
             councilManagementAddress, 
@@ -103,6 +103,14 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         external view returns (MembershipManagement.Council memory)
     {
         return CouncilManager(councilManagementAddress).getCouncil(role);
+    }
+    function startVoting(uint proposalId) external{
+        if(proposals[proposalId] == address(0))
+            revert("Invalid Proposal");
+        Proposal prop = Proposal(proposals[proposalId]);
+        if(prop.owner() != msg.sender)
+            revert("Only owner can start voting");
+        prop.startVoting(msg.sender);
     }
     function performVote(uint proposalId, bool voteCast) isMember("Must be a member to vote") external{
         if(proposals[proposalId] == address(0))
@@ -144,20 +152,7 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
     function getMembershipResponse(MembershipProposal prop)
         private view returns(MembershipManagement.MembershipProposalResponse memory)
     {
-        MembershipManagement.Nation memory nat = prop.getNation();
-        CouncilManager manager = CouncilManager(councilManagementAddress);
-        uint groupId = prop.groupId();
-        return MembershipManagement.MembershipProposalResponse(
-            prop.id(),
-            nat.id,
-            nat,
-            manager.getCouncilRoleForGroup(groupId),
-            groupId,
-            prop.getVotes(),
-            prop.duration(),
-            prop.status(),
-            prop.isProcessing()
-        );
+        return prop.getMembershipResponse();
     }
     function acceptMember(address proposalAddress) private{
         CouncilManager manager = CouncilManager(councilManagementAddress);
@@ -194,6 +189,10 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
                 i++;
             }
             return rtn;
+    }
+    function getEnteredMembershipRequests() external view
+    returns(MembershipManagement.MembershipProposalResponse[] memory){
+        return getMembershipRequests(MembershipManagement.ApprovalStatus.Entered);
     }
     function getPendingMembershipRequests()
         external view returns(MembershipManagement.MembershipProposalResponse[] memory)
