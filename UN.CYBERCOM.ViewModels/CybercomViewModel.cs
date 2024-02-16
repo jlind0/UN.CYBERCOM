@@ -246,6 +246,8 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = AccountNumber
                     });
                     EnteredMembershipProposals.AddRange(enteredDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
+                    foreach (var pmp in EnteredMembershipProposals)
+                        await pmp.Load.Execute().GetAwaiter();
                     PendingMembershipProposals.Clear();
                     var pendingDto = await CyberService.GetPendingMembershipRequestsQueryAsync(new GetPendingMembershipRequestsFunction()
                     {
@@ -429,7 +431,7 @@ namespace UN.CYBERCOM.ViewModels
             try
             {
                 var ps = new ProposalService(Root.W3, ProposalVM.ProposalAddress);
-                await ps.AddDocumentRequestAndWaitForReceiptAsync(new Contracts.Proposal.ContractDefinition.AddDocumentFunction()
+                var tx = new Contracts.Proposal.ContractDefinition.AddDocumentFunction()
                 {
                     Signature = Signature.HexToByteArray(),
                     DocHash = DocumentHash.HexToByteArray(),
@@ -439,7 +441,10 @@ namespace UN.CYBERCOM.ViewModels
                     Url = Url ?? throw new InvalidDataException(),
                     AmountToSend = 0,
                     Gas = 1500000
-                });
+                };
+                var data = Convert.ToHexString(tx.GetCallData()).ToLower();
+                var signedData = await Root.SignatureRequest.Handle(data).GetAwaiter();
+                var str = await Root.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
             }
             catch (Exception ex) 
             {
@@ -837,7 +842,7 @@ namespace UN.CYBERCOM.ViewModels
 
         public override bool IsProcessing => Data.IsProcessing;
 
-        public override string Owner => Data.Owner;
+        public override string Owner => Data.Owner.ToLower();
 
         public override string ProposalAddress => Data.ProposalAddress;
 

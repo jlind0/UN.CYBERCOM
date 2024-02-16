@@ -9,34 +9,40 @@
     <TelerikDialog Title="Add Document" @bind-Visible="ViewModel.IsOpen">
         <DialogContent>
             <TelerikForm Model="ViewModel">
-                <FormItem Field="@nameof(AddDocumentViewModel.Title)" LabelText="Ttile"></FormItem>
-                <FormItem Field="@nameof(AddDocumentViewModel.Url)" LabelText="Url"></FormItem>
-                @if (ViewModel.CanHashUrl)
-                {
-                    <FormItem LabelText="Document Hash">
-                        <Template>
-                            <TelerikButton OnClick="ViewModel.HashUrl.BindCommand<MouseEventArgs>()">Hash</TelerikButton>
-                            @ViewModel.DocumentHash
-                        </Template>
-                    </FormItem>
-                }
-                @if (ViewModel.CanSignHash)
-                {
-                    <FormItem LabelText="Signature">
-                        <Template>
-                            <TelerikButton OnClick="ViewModel.SignHash.BindCommand<MouseEventArgs>()">Sign</TelerikButton>
-                            @ViewModel.Signature
-                        </Template>
-                    </FormItem>
-                }
+                <FormItems>
+                    <FormItem Field="@nameof(AddDocumentViewModel.Title)" LabelText="Ttile"></FormItem>
+                    <FormItem Field="@nameof(AddDocumentViewModel.Url)" LabelText="Url"></FormItem>
+                    @if (ViewModel.CanHashUrl)
+                    {
+                        <FormItem LabelText="Document Hash" Field="@nameof(AddDocumentViewModel.DocumentHash)">
+                            <Template>
+                                <TelerikButton OnClick="ViewModel.HashUrl.BindCommand<MouseEventArgs>()">Hash</TelerikButton>
+                                @ViewModel.DocumentHash
+                            </Template>
+                        </FormItem>
+                    }
+                    @if (ViewModel.CanSignHash)
+                    {
+                        <FormItem LabelText="Signature" Field="@nameof(AddDocumentViewModel.Signature)">
+                            <Template>
+                                <TelerikButton OnClick="ViewModel.SignHash.BindCommand<MouseEventArgs>()">Sign</TelerikButton>
+                                @ViewModel.Signature
+                            </Template>
+                        </FormItem>
+                    }
+                    @if (ViewModel.CanAdd)
+                    {
+                        <FormItem>
+                            <Template>
+                                <TelerikButton OnClick="ViewModel.Add.BindCommand<MouseEventArgs>()">Add</TelerikButton>
+                            </Template>
+                        </FormItem>
+                        
+                    }
+                </FormItems>
+                
             </TelerikForm>
         </DialogContent>
-        <DialogButtons>
-            @if (ViewModel.CanAdd)
-            {
-                <TelerikButton OnClick="ViewModel.Add.BindCommand<MouseEventArgs>()">Add</TelerikButton>
-            }
-        </DialogButtons>
     </TelerikDialog>
 }
 @code{

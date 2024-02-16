@@ -43,13 +43,17 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         CouncilManager manager = CouncilManager(councilManagementAddress);
         return manager.getCouncils();
     }
+    error GroupNotFound();
+    error NationAlreadyMember();
+    error OutstandingProposal();
+    error LogicError();
     function submitMembershipProposal(MembershipManagement.MembershipProposalRequest memory request)
         external returns(address)
     {
         CouncilManager manager = CouncilManager(councilManagementAddress);
 
         if(!manager.doesCouncilGroupExist(request.groupId))
-            revert("Group not found");
+            revert GroupNotFound();
         if(manager.totalNations() == 0){
             address proposalAddress = constructMembershipProposal(request);
             MembershipProposal prop = MembershipProposal(proposalAddress);
@@ -58,12 +62,12 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
             return proposalAddress;
         }
         else if(manager.doesNationExist(request.member))
-            revert("Nation already a member");
+            revert NationAlreadyMember();
         else if(membershipProposals[request.member] != address(0)){
             MembershipProposal prop = MembershipProposal(membershipProposals[request.member]);
             MembershipManagement.ApprovalStatus aprStatus = prop.status();
             if(aprStatus == MembershipManagement.ApprovalStatus.Entered || aprStatus == MembershipManagement.ApprovalStatus.Pending || aprStatus == MembershipManagement.ApprovalStatus.Ready)
-                revert("Outstanding proposal");
+                revert OutstandingProposal();
             else if(aprStatus == MembershipManagement.ApprovalStatus.Approved)
                 return address(prop);
             else if(aprStatus == MembershipManagement.ApprovalStatus.Rejected)
@@ -71,7 +75,7 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         }
         else
             return constructMembershipProposal(request);
-        revert("Logic error");
+        revert LogicError();
     }
     function constructMembershipProposal(MembershipManagement.MembershipProposalRequest memory request)
         private returns(address)
@@ -104,17 +108,18 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
     {
         return CouncilManager(councilManagementAddress).getCouncil(role);
     }
+    error NotOwner();
     function startVoting(uint proposalId) external{
         if(proposals[proposalId] == address(0))
-            revert("Invalid Proposal");
+            revert InvalidProposal();
         Proposal prop = Proposal(proposals[proposalId]);
         if(prop.owner() != msg.sender)
-            revert("Only owner can start voting");
+            revert NotOwner();
         prop.startVoting(msg.sender);
     }
     function performVote(uint proposalId, bool voteCast) isMember("Must be a member to vote") external{
         if(proposals[proposalId] == address(0))
-            revert("Invalid Proposal");
+            revert InvalidProposal();
         Proposal prop = Proposal(proposals[proposalId]);
         prop.vote(voteCast, msg.sender);
     }
@@ -123,14 +128,16 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
             Voting v = Voting(votingAddress);
             v.prepareTally(proposalId);
         }
+    error InvalidProposal();
+    error ProposalNotReadyForTally();
     function doCompleteVoting(uint proposalId)
         private
     {
        if(proposals[proposalId] == address(0))
-            revert("Invalid Proposal");
+            revert InvalidProposal();
         Proposal proposal = Proposal(proposals[proposalId]);
         if(proposal.status() != MembershipManagement.ApprovalStatus.Ready)
-            revert("Proposal is not ready to tally on yet");
+            revert ProposalNotReadyForTally();
         Voting vtg = Voting(votingAddress);
         MembershipManagement.ApprovalStatus status = vtg.tallyVotes(proposalId);
         if(status == MembershipManagement.ApprovalStatus.Approved){
