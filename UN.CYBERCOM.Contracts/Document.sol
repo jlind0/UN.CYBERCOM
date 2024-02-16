@@ -42,7 +42,7 @@ abstract contract DocumentsHolder{
         urls.push(url);
         urlToDocument[url] = address(d);
     }
-    function getDocuments() external virtual returns(MembershipManagement.Doc[] memory){
+    function getDocuments() public virtual view returns(MembershipManagement.Doc[] memory){
         MembershipManagement.Doc[] memory docs = new MembershipManagement.Doc[](urls.length);
         uint i = 0;
         while(i < docs.length){

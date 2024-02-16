@@ -3,7 +3,7 @@ var dotNetObject = undefined;
 var connectedAccount = undefined;
 const connectWallet = async () => {
     try {
-        if (!ethereum) return alert('Please install Metamask')
+        if (!ethereum) return alert('Please install Coinbase Wallet')
         const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
         connectedAccount = accounts[0];
         if (connectedAccount !== undefined)
@@ -15,7 +15,7 @@ const connectWallet = async () => {
 let web3;
 const isWalletConnected = async () => {
     try {
-        if (!ethereum) return alert('Please install Metamask');
+        if (!ethereum) return alert('Please install Coinbase Wallet');
         web3 = new Web3(window.ethereum);
         const accounts = await ethereum.request({ method: 'eth_accounts' });
 
@@ -49,13 +49,20 @@ window.signTransaction = async function(fromAddress,contractAddress, tranData, r
         to: contractAddress,
         data: tranData,
         value: 0,
-        gas: 1500000
+        gas: 15000000
     };
     const signedTx = await window.ethereum.request({
         method: 'eth_signTransaction',
         params: [ tx],
     });
     dotNetObject.invokeMethodAsync(rtnFunction, signedTx);
+}
+window.signHash = async function (fromAddress, documentHash, rtnFunction) {
+    const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [documentHash, fromAddress]
+    });
+    dotNetObject.invokeMethodAsync(rtnFunction, signature);
 }
 window.setAccount = function (accountNum) {
     if (dotNetObject === undefined)

@@ -1,0 +1,44 @@
+﻿@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+@using System.Threading;
+@inherits ReactiveComponentBase<AddDocumentViewModel>
+@if(ViewModel != null)
+{
+    <button class="btn btn-primary" @onclick="ViewModel.Open.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-plus"></i></button>
+    <TelerikDialog Title="Add Document" @bind-Visible="ViewModel.IsOpen">
+        <DialogContent>
+            <TelerikForm Model="ViewModel">
+                <FormItem Field="@nameof(AddDocumentViewModel.Title)" LabelText="Ttile"></FormItem>
+                <FormItem Field="@nameof(AddDocumentViewModel.Url)" LabelText="Url"></FormItem>
+                @if (ViewModel.CanHashUrl)
+                {
+                    <FormItem LabelText="Document Hash">
+                        <Template>
+                            <TelerikButton OnClick="ViewModel.HashUrl.BindCommand<MouseEventArgs>()">Hash</TelerikButton>
+                            @ViewModel.DocumentHash
+                        </Template>
+                    </FormItem>
+                }
+                @if (ViewModel.CanSignHash)
+                {
+                    <FormItem LabelText="Signature">
+                        <Template>
+                            <TelerikButton OnClick="ViewModel.SignHash.BindCommand<MouseEventArgs>()">Sign</TelerikButton>
+                            @ViewModel.Signature
+                        </Template>
+                    </FormItem>
+                }
+            </TelerikForm>
+        </DialogContent>
+        <DialogButtons>
+            @if (ViewModel.CanAdd)
+            {
+                <TelerikButton OnClick="ViewModel.Add.BindCommand<MouseEventArgs>()">Add</TelerikButton>
+            }
+        </DialogButtons>
+    </TelerikDialog>
+}
+@code{
+
+}

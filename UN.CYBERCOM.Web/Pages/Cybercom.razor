@@ -5,8 +5,8 @@
 @using System.Threading;
 @inherits ReactiveInjectableComponentBase<CybercomViewModel>
 @inject IJSRuntime JSRun
-<PageTitle>UN(official) CYBERCOM</PageTitle>
-<h3>UN(official) CYBERCOM</h3>
+<PageTitle>UNofficial CYBERCOM</PageTitle>
+<h3>UNofficial CYBERCOM</h3>
 @if (ViewModel != null)
 {
     <AlertView Alert="ViewModel.Alert" />
@@ -63,6 +63,20 @@
                             @if (((MembershipProposalViewModel)context).CanStartVoting)
                             {
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).StartVoting.BindCommand<MouseEventArgs>()">Start Voting</TelerikButton>
+                            <AddDocumentView ViewModel="((ProposalViewModel)context).AddDocumentVM" />
+                                <ul>
+                                    @foreach(var doc in ((ProposalViewModel)context).Documents)
+                                    {
+                                        <li>
+                                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                            <p>Signature: @doc.Signature</p>
+                                            <p>Signer: @doc.Signer</p>
+                                            <p>Document Address: @doc.Address</p>
+                                        </li>
+                                    }
+                                </ul>
+                                
                             }
                         </Template>
                     </GridColumn>
@@ -137,6 +151,8 @@
 }
 @code {
     protected SemaphoreSlim Slim { get; } = new SemaphoreSlim(0);
+    protected SemaphoreSlim Slim2 { get; } = new SemaphoreSlim(0);
+    protected string? SignedDocHash{ get; set; }
     protected string? SignedData{ get; set; }
     protected override Task OnInitializedAsync()
     {
@@ -145,6 +161,14 @@
             await JSRun.InvokeVoidAsync("signTransaction", ViewModel.AccountNumber, ViewModel.ContractAddress, data.Input, nameof(CallMemberRequestFin));
             await Slim.WaitAsync();
             data.SetOutput(SignedData ?? throw new InvalidDataException());
+            SignedData = null;
+        });
+        ViewModel.SignData.RegisterHandler(async data =>
+        {
+            await JSRun.InvokeVoidAsync("signHash", ViewModel.AccountNumber, data.Input, nameof(CallDocHashFin));
+            await Slim2.WaitAsync();
+            data.SetOutput(SignedDocHash ?? throw new InvalidOperationException());
+            SignedDocHash = null;
         });
         return base.OnInitializedAsync();
     }
@@ -160,7 +184,13 @@
         Slim.Release();
         return Task.CompletedTask;
     }
-
+    [JSInvokable("CallDocHashFin")]
+    public Task CallDocHashFin(string signedData)
+    {
+        SignedDocHash = signedData;
+        Slim2.Release();
+        return Task.CompletedTask;
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);

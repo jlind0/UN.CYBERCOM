@@ -19,10 +19,16 @@ using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition;
 using UN.CYBERCOM.Contracts.MembershipProposal;
 
 using AutoMapper;
+using UN.CYBERCOM.Contracts.Document;
+using Nethereum.Hex.HexConvertors.Extensions;
+using UN.CYBERCOM.Contracts.Proposal;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Security.Cryptography;
+using Org.BouncyCastle.Crypto.Tls;
 
 namespace UN.CYBERCOM.ViewModels
 {
-    public class CybercomViewModel : ReactiveObject
+    public class CybercomViewModel : ReactiveObject, IDisposable
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
         public Interaction<string, string> SignatureRequest { get; } = new Interaction<string, string>();
@@ -94,6 +100,8 @@ namespace UN.CYBERCOM.ViewModels
             set => this.RaiseAndSetIfChanged(ref newNationName, value);
         }
         private string? newMemberAddress;
+        private bool disposedValue;
+
         public string? NewMemberAddress
         {
             get => newMemberAddress;
@@ -142,7 +150,7 @@ namespace UN.CYBERCOM.ViewModels
             {
                 if (p.Value)
                     await DoLoad();
-            });
+            }).DisposeWith(disposable);
         }
         protected async Task DoMembershipRequest()
         {
@@ -170,7 +178,7 @@ namespace UN.CYBERCOM.ViewModels
                             Duration = BigInteger.Zero
                         },
                         AmountToSend = 0,
-                        Gas = 1500000,
+                        Gas = 15000000,
                         
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
@@ -291,16 +299,45 @@ namespace UN.CYBERCOM.ViewModels
                 IsLoading = false;
             }
         }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+                disposable.Dispose();
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~CybercomViewModel()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
-    public class MembershipVoteProposalViewModel : ReactiveObject
+    public class VoteViewModel : ReactiveObject
     {
-        public MembershipProposalViewModel Proposal { get; }
+        public ProposalViewModel Proposal { get; }
         
         public Vote Data { get; }
         public bool CastedVote { get => Data.VoteCasted; }
         public Nation Nation { get; }
         protected CybercomViewModel Root { get; }
-        public MembershipVoteProposalViewModel(CybercomViewModel root, MembershipProposalViewModel proposal, Vote vote)
+        public VoteViewModel(CybercomViewModel root, ProposalViewModel proposal, Vote vote)
         {
             Root = root;
             Data = vote;
@@ -308,9 +345,292 @@ namespace UN.CYBERCOM.ViewModels
             Nation = root.Nations.Single(n => n.Id == vote.Member);
         }
     }
-    public class MembershipProposalViewModel : ReactiveObject
+    public class AddDocumentViewModel : DocumentViewModel
     {
-        public ObservableCollection<MembershipVoteProposalViewModel> MembershipVotes { get; } = new ObservableCollection<MembershipVoteProposalViewModel>();
+        public ReactiveCommand<Unit, Unit> HashUrl { get; }
+        public ReactiveCommand<Unit, Unit> Add { get; }
+        public ReactiveCommand<Unit, Unit> SignHash { get; }
+        public bool CanHashUrl
+        {
+            get => Url != null;
+        }
+        private bool isOpen = false;
+        public bool IsOpen
+        {
+            get => isOpen;
+            set => this.RaiseAndSetIfChanged(ref isOpen, value);
+        }
+        public ReactiveCommand<Unit, Unit> Open { get; }
+        public AddDocumentViewModel(CybercomViewModel root, ProposalViewModel proposalVM) : base(root, proposalVM) 
+        {
+            this.WhenPropertyChanged(p => p.Url).Subscribe(p => {
+                Signature = null;
+                DocumentHash = null;
+                this.RaisePropertyChanged(nameof(CanHashUrl));
+                this.RaisePropertyChanged(nameof(CanSignHash));
+                this.RaisePropertyChanged(nameof(CanAdd));
+                }).DisposeWith(disposable);
+            this.WhenPropertyChanged(p => p.DocumentHash).Subscribe(p =>
+            {
+                Signature = null;
+                this.RaisePropertyChanged(nameof(CanSignHash));
+                this.RaisePropertyChanged(nameof(CanAdd));
+            }).DisposeWith(disposable);
+            this.WhenPropertyChanged(p => p.Signature).Subscribe(p =>
+            {
+                this.RaisePropertyChanged(nameof(CanSignHash));
+                this.RaisePropertyChanged(nameof(CanAdd));
+            }).DisposeWith(disposable);
+            HashUrl = ReactiveCommand.CreateFromTask(DoHashUrl);
+            Add = ReactiveCommand.CreateFromTask(DoAdd);
+            SignHash = ReactiveCommand.CreateFromTask(DoSignHash);
+            Open = ReactiveCommand.Create(DoOpen);
+        }
+        protected void DoOpen()
+        {
+            IsOpen = true;
+        }
+        protected async Task DoSignHash()
+        {
+            if (!CanSignHash)
+            {
+                await Root.Alert.Handle("Document Hash not ready to sign.").GetAwaiter();
+                return;
+            }
+            try
+            {
+                Signature = await Root.SignData.Handle(DocumentHash ?? throw new InvalidDataException()).GetAwaiter();
+            }
+            catch (Exception ex)
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+        public bool CanSignHash
+        {
+            get => !string.IsNullOrWhiteSpace(DocumentHash);
+        }
+        public bool CanAdd
+        {
+            get => !string.IsNullOrWhiteSpace(Signature) && !string.IsNullOrWhiteSpace(DocumentHash) && !string.IsNullOrWhiteSpace(Title) && !string.IsNullOrWhiteSpace(Url);
+        }
+        protected async Task DoAdd()
+        {
+            if(!ProposalVM.OwnsProposal)
+            {
+                await Root.Alert.Handle("Only the Proposal owner can add a document").GetAwaiter();
+                return;
+            }
+            if (!CanAdd)
+            {
+                await Root.Alert.Handle("Please complete form");
+                return;
+            }
+            try
+            {
+                var ps = new ProposalService(Root.W3, ProposalVM.ProposalAddress);
+                await ps.AddDocumentRequestAndWaitForReceiptAsync(new Contracts.Proposal.ContractDefinition.AddDocumentFunction()
+                {
+                    Signature = Signature.HexToByteArray(),
+                    DocHash = DocumentHash.HexToByteArray(),
+                    Title = Title ?? throw new InvalidDataException(),
+                    Signer = Root.AccountNumber ?? throw new InvalidDataException(),
+                    FromAddress = Root.AccountNumber,
+                    Url = Url ?? throw new InvalidDataException(),
+                    AmountToSend = 0,
+                    Gas = 1500000
+                });
+            }
+            catch (Exception ex) 
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+        protected async Task DoHashUrl()
+        {
+            if (!CanHashUrl)
+            {
+                await Root.Alert.Handle("Url not ready for hash").GetAwaiter();
+                return;
+            }
+            try
+            {
+                DocumentHash = await ComputeHash();
+            }
+            catch(Exception ex)
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+    }
+    public class DocumentViewModel : ReactiveObject, IDisposable
+    {
+        protected async Task<string> ComputeHash()
+        {
+            using (var client = new HttpClient())
+            {
+                var data = await client.GetByteArrayAsync(Url);
+                if (data != null)
+                {
+                    using (var sha256 = SHA256.Create())
+                    {
+                        byte[] hashBytes = sha256.ComputeHash(data);
+                        return hashBytes.ToHex(true);
+                    }
+                }
+                else
+                    throw new InvalidDataException();
+            }
+        }
+        private string? url;
+        public string? Url
+        {
+            get => url;
+            set => this.RaiseAndSetIfChanged(ref url, value);
+        }
+        private string? docHash;
+        public string? DocumentHash
+        {
+            get => docHash;
+            set => this.RaiseAndSetIfChanged(ref docHash, value);
+        }
+        private string? signature;
+        public string? Signature
+        {
+            get => signature;
+            set => this.RaiseAndSetIfChanged(ref signature, value);
+        }
+        private string? address;
+        private bool disposedValue;
+
+        public string? Address
+        {
+            get => address;
+            set => this.RaiseAndSetIfChanged(ref address, value);
+        }
+        private string? title;
+        public string? Title
+        {
+            get => title;
+            set => this.RaiseAndSetIfChanged(ref title, value);
+        }
+        private string? signer;
+        public string? Signer
+        {
+            get => signer;
+            set => this.RaiseAndSetIfChanged(ref signer, value);
+        }
+        private bool? documentHashIsValid;
+        public bool? DocumentHashIsValid
+        {
+            get => documentHashIsValid;
+            set => this.RaiseAndSetIfChanged(ref documentHashIsValid, value);
+        }
+        protected CybercomViewModel Root { get; }
+        protected ProposalViewModel ProposalVM { get; }
+        protected readonly CompositeDisposable disposable = new CompositeDisposable();
+        public ReactiveCommand<Unit, Unit> VerifyDocumentHash { get; }
+        public DocumentViewModel(CybercomViewModel root, ProposalViewModel proposalVM, string? _address = null)
+        {
+            Root = root;
+            ProposalVM = proposalVM;
+            this.WhenPropertyChanged(p => p.Address).Subscribe(async p =>
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(p.Value))
+                    {
+                        DocumentService ds = new DocumentService(Root.W3, p.Value);
+                        Title = await ds.TitleQueryAsync(new Contracts.Document.ContractDefinition.TitleFunction()
+                        {
+                            FromAddress = Root.AccountNumber
+                        });
+                        Signature = (await ds.SignatureQueryAsync(new Contracts.Document.ContractDefinition.SignatureFunction()
+                        {
+                            FromAddress = Root.AccountNumber
+                        })).ToHex(true);
+                        DocumentHash = (await ds.DochashQueryAsync(new Contracts.Document.ContractDefinition.DochashFunction()
+                        {
+                            FromAddress = Root.AccountNumber
+                        })).ToHex(true);
+                        Url = await ds.UrlQueryAsync(new Contracts.Document.ContractDefinition.UrlFunction()
+                        {
+                            FromAddress = Root.AccountNumber
+                        });
+                        Signer = await ds.SignerQueryAsync(new Contracts.Document.ContractDefinition.SignerFunction()
+                        {
+                            FromAddress = Root.AccountNumber
+                        });
+                    }
+                    else
+                    {
+                        Title = null;
+                        Signature = null;
+                        DocumentHash = null;
+                        Url = null;
+                        Signer = null;
+                    }
+                }
+                catch(Exception ex)
+                {
+                    await Root.Alert.Handle(ex.Message).GetAwaiter();
+                }
+            }).DisposeWith(disposable);
+            Address = _address;
+            VerifyDocumentHash = ReactiveCommand.CreateFromTask(DoVerifyDocumentHash);
+        }
+        protected async Task DoVerifyDocumentHash()
+        {
+            if(string.IsNullOrWhiteSpace(DocumentHash))
+            {
+                await Root.Alert.Handle("Hash ios not set").GetAwaiter();
+                return;
+            }
+            try
+            {
+                DocumentHashIsValid = null;
+                var hash = await ComputeHash();
+                DocumentHashIsValid = DocumentHash == hash;
+            }
+            catch (Exception ex)
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+                disposable.Dispose();
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~DocumentViewModel()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+    public abstract class ProposalViewModel : ReactiveObject
+    {
+        public ObservableCollection<VoteViewModel> Votes { get; } = new ObservableCollection<VoteViewModel>();
+        public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
+        public AddDocumentViewModel AddDocumentVM { get; }
         public enum ApprovalStatus : byte
         {
             Entered,
@@ -321,25 +641,8 @@ namespace UN.CYBERCOM.ViewModels
         }
         protected Interaction<string, string> SignatureRequest { get; }
         protected Interaction<string, bool> Alert { get; }
-        protected MembershipProposalResponse Data { get; }
-        public Council Council { get; }
-        public CouncilGroup CouncilGroup { get; }
-        public string Id
-        {
-            get => Data.Id.ToString();
-        }
-        public Nation NewNation
-        {
-            get => Data.NewNation;
-        }
-        public string ProposalId
-        {
-            get => Data.Id.ToString();
-        }
-        public DateTime Duration
-        {
-            get => Data.Duration.FromUnixTimestamp();
-        }
+        public abstract string Id { get; }
+        public abstract DateTime Duration { get; }
         public ReactiveCommand<Unit, Unit> StartVoting { get; }
         public ReactiveCommand<Unit, Unit> Tally { get; }
         public ReactiveCommand<Unit, Unit> CompleteTally { get; }
@@ -353,7 +656,7 @@ namespace UN.CYBERCOM.ViewModels
         }
         public bool CanTally
         {
-            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !Data.IsProcessing;
+            get => Status == ApprovalStatus.Pending && Duration < DateTime.UtcNow && !IsProcessing;
         }
         public bool CanVote
         {
@@ -361,29 +664,31 @@ namespace UN.CYBERCOM.ViewModels
         }
         public bool CanCompleteTally
         {
-            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Ready;
+            get => Status == ApprovalStatus.Ready;
         }
         public bool IsCompleted
         {
-            get => ((ApprovalStatus)Data.Status) == ApprovalStatus.Rejected || ((ApprovalStatus)Data.Status) == ApprovalStatus.Approved;
+            get => Status == ApprovalStatus.Rejected || Status == ApprovalStatus.Approved;
         }
         protected CybercomViewModel Parent { get; }
         public bool OwnsProposal
         {
-            get => Parent.AccountNumber == Data.Owner;
+            get => Parent.AccountNumber == Owner;
         }
         public bool CanStartVoting
         {
-            get => OwnsProposal && ((ApprovalStatus)Data.Status) == ApprovalStatus.Entered;
+            get => OwnsProposal && Status == ApprovalStatus.Entered;
         }
-        public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council)
+        public abstract ApprovalStatus Status { get; }
+        public abstract bool IsProcessing { get; }
+        public abstract string Owner { get; }
+        public abstract string ProposalAddress { get; }
+        public ProposalViewModel(CybercomViewModel vm)
         {
+            AddDocumentVM = new AddDocumentViewModel(vm, this);
             Parent = vm;
             SignatureRequest = vm.SignatureRequest;
             Alert = vm.Alert;
-            Data = data;
-            Council = council;
-            CouncilGroup = Council.Groups.Single(g => g.Id == Data.GroupId);
             Tally = ReactiveCommand.CreateFromTask(DoTally);
             CompleteTally = ReactiveCommand.CreateFromTask(DoCompleteTally);
             Vote = ReactiveCommand.CreateFromTask(DoVote);
@@ -398,7 +703,7 @@ namespace UN.CYBERCOM.ViewModels
                 {
                     StartVotingFunction svf = new StartVotingFunction()
                     {
-                        ProposalId = Data.Id,
+                        ProposalId = BigInteger.Parse(Id),
                         FromAddress = Parent.AccountNumber,
                         AmountToSend = 0,
                         Gas = 1500000
@@ -413,7 +718,7 @@ namespace UN.CYBERCOM.ViewModels
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
-        protected async Task DoLoad()
+        protected virtual async Task DoLoad()
         {
             try
             {
@@ -421,12 +726,21 @@ namespace UN.CYBERCOM.ViewModels
                 {
                     var votesDto = await Parent.CyberService.GetProposalVotesQueryAsync(new GetProposalVotesFunction()
                     {
-                        ProposalId = Data.Id,
+                        ProposalId = BigInteger.Parse(Id),
                         FromAddress = Parent.AccountNumber
                     });
-                    MembershipVotes.Clear();
-                    MembershipVotes.AddRange(votesDto.ReturnValue1.Select(
-                        v => new MembershipVoteProposalViewModel(Parent, this, v)));
+                    Votes.Clear();
+                    Votes.AddRange(votesDto.ReturnValue1.Select(
+                        v => new VoteViewModel(Parent, this, v)));
+                    foreach (var doc in Documents)
+                        doc.Dispose();
+                    Documents.Clear();
+                    var ms = new ProposalService(Parent.W3, ProposalAddress);
+                    var docs = await ms.GetDocumentsQueryAsync(new Contracts.Proposal.ContractDefinition.GetDocumentsFunction()
+                    {
+                        FromAddress = Parent.AccountNumber
+                    });
+                    Documents.AddRange(docs.ReturnValue1.Select(g => new DocumentViewModel(Parent, this, g.DocAddress)));
                 }
             }
             catch (Exception ex)
@@ -434,14 +748,14 @@ namespace UN.CYBERCOM.ViewModels
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
-        protected async Task DoVote()
+        protected virtual async Task DoVote()
         {
             try
             {
                 var tran = new PerformVoteFunction()
                 {
                     FromAddress = Parent.AccountNumber,
-                    ProposalId = Data.Id,
+                    ProposalId = BigInteger.Parse(Id),
                     AmountToSend = 0,
                     Gas = 1500000,
                     VoteCast = CastVote
@@ -455,7 +769,7 @@ namespace UN.CYBERCOM.ViewModels
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
-        protected async Task DoCompleteTally()
+        protected virtual async Task DoCompleteTally()
         {
             try
             {
@@ -464,7 +778,7 @@ namespace UN.CYBERCOM.ViewModels
                     var tran = new CompleteVotingFunction()
                     {
                         FromAddress = Parent.AccountNumber,
-                        ProposalId = Data.Id,
+                        ProposalId = BigInteger.Parse(Id),
                         AmountToSend = 0,
                         Gas = 1500000
                     };
@@ -473,21 +787,21 @@ namespace UN.CYBERCOM.ViewModels
                     var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
-        protected async Task DoTally()
+        protected virtual async Task DoTally()
         {
             try
             {
-                if(CanTally)
+                if (CanTally)
                 {
                     var tran = new PrepareTallyFunction()
                     {
                         FromAddress = Parent.AccountNumber,
-                        ProposalId = Data.Id,
+                        ProposalId = BigInteger.Parse(Id),
                         AmountToSend = 0,
                         Gas = 1500000
                     };
@@ -496,11 +810,45 @@ namespace UN.CYBERCOM.ViewModels
                     var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
+    }
+    public class MembershipProposalViewModel : ProposalViewModel
+    {
+        
+        
+        protected MembershipProposalResponse Data { get; }
+        public Council Council { get; }
+        public CouncilGroup CouncilGroup { get; }
+        
+        public Nation NewNation
+        {
+            get => Data.NewNation;
+        }
+
+        public override string Id => Data.Id.ToString();
+
+        public override DateTime Duration => Data.Duration.FromUnixTimestamp();
+
+        public override ApprovalStatus Status => (ApprovalStatus)Data.Status;
+
+        public override bool IsProcessing => Data.IsProcessing;
+
+        public override string Owner => Data.Owner;
+
+        public override string ProposalAddress => Data.ProposalAddress;
+
+        public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council) :base(vm)
+        {
+            Data = data;
+            Council = council;
+            CouncilGroup = Council.Groups.Single(g => g.Id == Data.GroupId);
+            
+        }
+        
     }
     public static class DateTimeExtensions
     {

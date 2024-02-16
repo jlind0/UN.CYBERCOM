@@ -93,24 +93,14 @@ namespace UN.CYBERCOM.Contracts.Proposal
             return ContractHandler.QueryAsync<DurationFunction, BigInteger>(null, blockParameter);
         }
 
-        public Task<string> GetDocumentsRequestAsync(GetDocumentsFunction getDocumentsFunction)
+        public Task<GetDocumentsOutputDTO> GetDocumentsQueryAsync(GetDocumentsFunction getDocumentsFunction, BlockParameter blockParameter = null)
         {
-             return ContractHandler.SendRequestAsync(getDocumentsFunction);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetDocumentsFunction, GetDocumentsOutputDTO>(getDocumentsFunction, blockParameter);
         }
 
-        public Task<string> GetDocumentsRequestAsync()
+        public Task<GetDocumentsOutputDTO> GetDocumentsQueryAsync(BlockParameter blockParameter = null)
         {
-             return ContractHandler.SendRequestAsync<GetDocumentsFunction>();
-        }
-
-        public Task<TransactionReceipt> GetDocumentsRequestAndWaitForReceiptAsync(GetDocumentsFunction getDocumentsFunction, CancellationTokenSource cancellationToken = null)
-        {
-             return ContractHandler.SendRequestAndWaitForReceiptAsync(getDocumentsFunction, cancellationToken);
-        }
-
-        public Task<TransactionReceipt> GetDocumentsRequestAndWaitForReceiptAsync(CancellationTokenSource cancellationToken = null)
-        {
-             return ContractHandler.SendRequestAndWaitForReceiptAsync<GetDocumentsFunction>(null, cancellationToken);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetDocumentsFunction, GetDocumentsOutputDTO>(null, blockParameter);
         }
 
         public Task<GetVotesOutputDTO> GetVotesQueryAsync(GetVotesFunction getVotesFunction, BlockParameter blockParameter = null)

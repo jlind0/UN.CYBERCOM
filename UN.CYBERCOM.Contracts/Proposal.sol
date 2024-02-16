@@ -40,7 +40,7 @@ abstract contract Proposal is DocumentsHolder{
     function setProcessing(bool processing) isFromVoting() public{
         isProcessing = processing;
     }
-    function getVotes() public view returns(MembershipManagement.Vote[] memory){
+    function getVotes() public virtual view returns(MembershipManagement.Vote[] memory){
         uint i = 0;
         MembershipManagement.Vote[] memory vs = new MembershipManagement.Vote[](voters.length);
         while(i < voters.length){

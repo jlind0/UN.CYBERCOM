@@ -11,7 +11,7 @@
         <TelerikButton OnClick="ViewModel.Vote.BindCommand<MouseEventArgs>()">Vote</TelerikButton>
     }
     <ul>
-        @foreach(var vote in ViewModel.MembershipVotes)
+        @foreach(var vote in ViewModel.Votes)
         {
             <li><b>@vote.Nation.Name:</b>@vote.CastedVote</li>
         }
