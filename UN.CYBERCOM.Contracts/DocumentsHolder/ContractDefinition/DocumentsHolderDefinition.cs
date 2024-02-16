@@ -52,6 +52,17 @@ namespace UN.CYBERCOM.Contracts.DocumentsHolder.ContractDefinition
 
     }
 
+    public partial class DocumentAddedEventDTO : DocumentAddedEventDTOBase { }
+
+    [Event("DocumentAdded")]
+    public class DocumentAddedEventDTOBase : IEventDTO
+    {
+        [Parameter("string", "url", 1, false )]
+        public virtual string Url { get; set; }
+        [Parameter("address", "documentAddress", 2, false )]
+        public virtual string DocumentAddress { get; set; }
+    }
+
 
 
     public partial class GetDocumentsOutputDTO : GetDocumentsOutputDTOBase { }
