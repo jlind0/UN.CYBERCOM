@@ -61,8 +61,7 @@ contract Document {
 
         // Verifying the digital signature
         bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dochash));
-        (address recoveredSigner, ECDSA.RecoverError err) = ethSignedHash.tryRecover(_signature);
-
+        (address recoveredSigner, ECDSA.RecoverError err, bytes32 something) = ethSignedHash.tryRecover(_signature);
         // Reverting transaction if the signature is invalid
         if (err != ECDSA.RecoverError.NoError || recoveredSigner != signer) {
             revert("Invalid signature");
