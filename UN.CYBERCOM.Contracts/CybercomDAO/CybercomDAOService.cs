@@ -129,6 +129,16 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
         }
 
+        public Task<GetEnteredMembershipRequestsOutputDTO> GetEnteredMembershipRequestsQueryAsync(GetEnteredMembershipRequestsFunction getEnteredMembershipRequestsFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetEnteredMembershipRequestsFunction, GetEnteredMembershipRequestsOutputDTO>(getEnteredMembershipRequestsFunction, blockParameter);
+        }
+
+        public Task<GetEnteredMembershipRequestsOutputDTO> GetEnteredMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryDeserializingToObjectAsync<GetEnteredMembershipRequestsFunction, GetEnteredMembershipRequestsOutputDTO>(null, blockParameter);
+        }
+
         public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(GetPendingMembershipRequestsFunction getPendingMembershipRequestsFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetPendingMembershipRequestsFunction, GetPendingMembershipRequestsOutputDTO>(getPendingMembershipRequestsFunction, blockParameter);
@@ -337,6 +347,32 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
                 revokeRoleFunction.Account = account;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(revokeRoleFunction, cancellationToken);
+        }
+
+        public Task<string> StartVotingRequestAsync(StartVotingFunction startVotingFunction)
+        {
+             return ContractHandler.SendRequestAsync(startVotingFunction);
+        }
+
+        public Task<TransactionReceipt> StartVotingRequestAndWaitForReceiptAsync(StartVotingFunction startVotingFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(startVotingFunction, cancellationToken);
+        }
+
+        public Task<string> StartVotingRequestAsync(BigInteger proposalId)
+        {
+            var startVotingFunction = new StartVotingFunction();
+                startVotingFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAsync(startVotingFunction);
+        }
+
+        public Task<TransactionReceipt> StartVotingRequestAndWaitForReceiptAsync(BigInteger proposalId, CancellationTokenSource cancellationToken = null)
+        {
+            var startVotingFunction = new StartVotingFunction();
+                startVotingFunction.ProposalId = proposalId;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(startVotingFunction, cancellationToken);
         }
 
         public Task<string> SubmitMembershipProposalRequestAsync(SubmitMembershipProposalFunction submitMembershipProposalFunction)

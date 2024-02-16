@@ -52,6 +52,22 @@
                     <GridColumn Field="@nameof(Nation.Name)" Title="Name" />
                 </GridColumns>
             </TelerikGrid>
+            <h2>Entered Membership Requests</h2>
+            <TelerikGrid Data="ViewModel.EnteredMembershipProposals">
+                <GridColumns>
+                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="NewNation.Id" Title="Nation Address" />
+                    <GridColumn Field="NewNation.Name" Title="Nation Name" />
+                    <GridColumn>
+                        <Template>
+                            @if (((MembershipProposalViewModel)context).CanStartVoting)
+                            {
+                                <TelerikButton OnClick="((MembershipProposalViewModel)context).StartVoting.BindCommand<MouseEventArgs>()">Start Voting</TelerikButton>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </TelerikGrid>
             <h2>Pending Membership Requests</h2>
             <TelerikGrid Data="ViewModel.PendingMembershipProposals">
                 <GridColumns>
