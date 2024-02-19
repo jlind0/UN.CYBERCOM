@@ -11,8 +11,10 @@ contract Document{
     address public signer;
     address public owningContract;
     uint public timestamp;
+    error AuthorizationError();
+    error InvalidSignature();
     modifier isFromOwningContract() {
-        require(msg.sender == owningContract, "Must be called from Owning Contract");
+        if(msg.sender != owningContract)revert AuthorizationError();
         _;
     }
     constructor(address _owningContract, address _signer, bytes memory _signature, bytes32 _dochash, string memory _url, string memory _title){
@@ -28,7 +30,7 @@ contract Document{
 
         // Check if there was an error during recovery or if the recovered address does not match the signer
         if (err != ECDSA.RecoverError.NoError || recoveredSigner != signer) {
-            revert("Invalid signature");
+            revert InvalidSignature();
         }
     }
 }

@@ -12,7 +12,7 @@ import "./Document.sol";
  */
 abstract contract Proposal is DocumentsHolder {
     uint public id;
-    MembershipManagement.ProposalTypes public poposalType;
+    MembershipManagement.ProposalTypes public proposalType;
     uint public duration;
     MembershipManagement.ApprovalStatus public status;
     uint public timestamp;
@@ -26,23 +26,24 @@ abstract contract Proposal is DocumentsHolder {
     address votingAddress;
     address councilManagementAddress;
 
-    event VotingStarted(uint proposalId);
-    event VotingCompleted(uint proposalId);
-    event StatusUpdated(uint proposalId, MembershipManagement.ApprovalStatus newStatus);
-    event VoteCasted(uint proposalId, address member, bool vote);
+    event VotingStarted(uint indexed proposalId);
+    event VotingCompleted(uint indexed proposalId);
+    event StatusUpdated(uint indexed proposalId, MembershipManagement.ApprovalStatus newStatus);
+    event VoteCasted(uint indexed proposalId, address member, bool vote);
 
+    error AuthorizationError();
     modifier isFromDAOorVoting() {
-        require(msg.sender == daoAddress || msg.sender == votingAddress || msg.sender == owner, "Must be called from DAO or Voting");
+        if(msg.sender != daoAddress && msg.sender != votingAddress && msg.sender != owner) revert AuthorizationError();
         _;
     }
 
     modifier isFromDAO() {
-        require(msg.sender == daoAddress, "Must be called from DAO");
+        if(msg.sender != daoAddress)revert AuthorizationError();
         _;
     }
 
     modifier isFromVoting() {
-        require(msg.sender == votingAddress, "Must be called from Voting");
+        if(msg.sender != votingAddress)revert AuthorizationError();
         _;
     }
 
@@ -112,15 +113,16 @@ abstract contract Proposal is DocumentsHolder {
         }
         return vs;
     }
-
+    error VotingNotStarted();
+    error VotingClosed();
     /**
      * @dev Casts a vote for the proposal.
      * @param voteCasted The vote cast by the member (true for approve, false for reject).
      * @param member The address of the member casting the vote.
      */
     function vote(bool voteCasted, address member) public isFromDAO() {
-        require(votingStarted, "Voting not started yet");
-        require(block.timestamp <= duration, "Voting has closed");
+        if(!votingStarted)revert VotingNotStarted();
+        if(block.timestamp > duration)revert VotingClosed();
         if (votes[member].proposalId != id) {
             voters.push(member);
         }
@@ -140,7 +142,9 @@ abstract contract Proposal is DocumentsHolder {
         status = MembershipManagement.ApprovalStatus.Pending;
         emit VotingStarted(id);
     }
-
+    function addDocument(address signer, string memory title, string memory url, bytes32 docHash, bytes memory signature) isFromDAOorVoting() public override{
+        super.addDocument(signer, title, url, docHash, signature);
+    }
     // Other functions such as addDocument() are unchanged
 }
 

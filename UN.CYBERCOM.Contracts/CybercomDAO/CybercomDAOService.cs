@@ -96,16 +96,6 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
             return ContractHandler.QueryAsync<CouncilManagementAddressFunction, string>(null, blockParameter);
         }
 
-        public Task<GetApprovedMembershipRequestsOutputDTO> GetApprovedMembershipRequestsQueryAsync(GetApprovedMembershipRequestsFunction getApprovedMembershipRequestsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetApprovedMembershipRequestsFunction, GetApprovedMembershipRequestsOutputDTO>(getApprovedMembershipRequestsFunction, blockParameter);
-        }
-
-        public Task<GetApprovedMembershipRequestsOutputDTO> GetApprovedMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetApprovedMembershipRequestsFunction, GetApprovedMembershipRequestsOutputDTO>(null, blockParameter);
-        }
-
         public Task<GetCouncilOutputDTO> GetCouncilQueryAsync(GetCouncilFunction getCouncilFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilFunction, GetCouncilOutputDTO>(getCouncilFunction, blockParameter);
@@ -129,57 +119,17 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
         }
 
-        public Task<GetEnteredMembershipRequestsOutputDTO> GetEnteredMembershipRequestsQueryAsync(GetEnteredMembershipRequestsFunction getEnteredMembershipRequestsFunction, BlockParameter blockParameter = null)
+        public Task<GetMembershipRequestsOutputDTO> GetMembershipRequestsQueryAsync(GetMembershipRequestsFunction getMembershipRequestsFunction, BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetEnteredMembershipRequestsFunction, GetEnteredMembershipRequestsOutputDTO>(getEnteredMembershipRequestsFunction, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipRequestsFunction, GetMembershipRequestsOutputDTO>(getMembershipRequestsFunction, blockParameter);
         }
 
-        public Task<GetEnteredMembershipRequestsOutputDTO> GetEnteredMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
+        public Task<GetMembershipRequestsOutputDTO> GetMembershipRequestsQueryAsync(byte status, BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetEnteredMembershipRequestsFunction, GetEnteredMembershipRequestsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(GetPendingMembershipRequestsFunction getPendingMembershipRequestsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetPendingMembershipRequestsFunction, GetPendingMembershipRequestsOutputDTO>(getPendingMembershipRequestsFunction, blockParameter);
-        }
-
-        public Task<GetPendingMembershipRequestsOutputDTO> GetPendingMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetPendingMembershipRequestsFunction, GetPendingMembershipRequestsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<GetProposalVotesOutputDTO> GetProposalVotesQueryAsync(GetProposalVotesFunction getProposalVotesFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetProposalVotesFunction, GetProposalVotesOutputDTO>(getProposalVotesFunction, blockParameter);
-        }
-
-        public Task<GetProposalVotesOutputDTO> GetProposalVotesQueryAsync(BigInteger proposalId, BlockParameter blockParameter = null)
-        {
-            var getProposalVotesFunction = new GetProposalVotesFunction();
-                getProposalVotesFunction.ProposalId = proposalId;
+            var getMembershipRequestsFunction = new GetMembershipRequestsFunction();
+                getMembershipRequestsFunction.Status = status;
             
-            return ContractHandler.QueryDeserializingToObjectAsync<GetProposalVotesFunction, GetProposalVotesOutputDTO>(getProposalVotesFunction, blockParameter);
-        }
-
-        public Task<GetReadyMembershipRequestsOutputDTO> GetReadyMembershipRequestsQueryAsync(GetReadyMembershipRequestsFunction getReadyMembershipRequestsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetReadyMembershipRequestsFunction, GetReadyMembershipRequestsOutputDTO>(getReadyMembershipRequestsFunction, blockParameter);
-        }
-
-        public Task<GetReadyMembershipRequestsOutputDTO> GetReadyMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetReadyMembershipRequestsFunction, GetReadyMembershipRequestsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<GetRejectedMembershipRequestsOutputDTO> GetRejectedMembershipRequestsQueryAsync(GetRejectedMembershipRequestsFunction getRejectedMembershipRequestsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetRejectedMembershipRequestsFunction, GetRejectedMembershipRequestsOutputDTO>(getRejectedMembershipRequestsFunction, blockParameter);
-        }
-
-        public Task<GetRejectedMembershipRequestsOutputDTO> GetRejectedMembershipRequestsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetRejectedMembershipRequestsFunction, GetRejectedMembershipRequestsOutputDTO>(null, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipRequestsFunction, GetMembershipRequestsOutputDTO>(getMembershipRequestsFunction, blockParameter);
         }
 
         public Task<byte[]> GetRoleAdminQueryAsync(GetRoleAdminFunction getRoleAdminFunction, BlockParameter blockParameter = null)

@@ -21,17 +21,25 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
     mapping(uint => address) proposals;
     address[] membershipProposalAddresses;
     uint proposalCount = 0;
-    modifier isMember(string memory message) {
+    error AuthorizationError();
+    modifier isMember() {
         CouncilManager manager = CouncilManager(councilManagementAddress);
-        require(hasRole(manager.BROKER_ROLE(), msg.sender) ||
-        hasRole(manager.POWER_ROLE(), msg.sender) ||
-        hasRole(manager.CENTRAL_ROLE(), msg.sender) ||
-        hasRole(manager.EMERGING_ROLE(), msg.sender) ||
-        hasRole(manager.GENERAL_ROLE(), msg.sender) ||
-        hasRole(manager.LESSER_ROLE(), msg.sender) ||
-        hasRole(manager.INDUSTRY_ROLE(), msg.sender), message);
+        if(!hasRole(manager.BROKER_ROLE(), msg.sender) &&
+        !hasRole(manager.POWER_ROLE(), msg.sender) &&
+        !hasRole(manager.CENTRAL_ROLE(), msg.sender) &&
+        !hasRole(manager.EMERGING_ROLE(), msg.sender) &&
+        !hasRole(manager.GENERAL_ROLE(), msg.sender) &&
+        !hasRole(manager.LESSER_ROLE(), msg.sender) &&
+        !hasRole(manager.INDUSTRY_ROLE(), msg.sender))revert AuthorizationError();
         _;
     }
+      event ProposalCreated(uint indexed proposalId, address proposalAddress);
+        event VoteStarted(uint indexed proposalId, address startedBy);
+        event VoteCast(uint indexed proposalId, address indexed voter, bool vote);
+        event TallyPrepared(uint indexed proposalId);
+        event VotingCompleted(uint indexed proposalId, MembershipManagement.ApprovalStatus status);
+        event MemberAccepted(address indexed memberId);
+        event MemberRejected(address indexed memberId);
     constructor(uint64 subscriptionId){
         s_subscriptionId = subscriptionId;
         CouncilManager manager = new CouncilManager(address(this));
@@ -100,6 +108,7 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         membershipProposals[request.newNation.id] = propAddress;
         proposals[prop.id()] = propAddress;
         membershipProposalAddresses.push(propAddress);
+        emit ProposalCreated(prop.id(), propAddress);
         return propAddress;
     }
     
@@ -116,17 +125,20 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         if(prop.owner() != msg.sender)
             revert NotOwner();
         prop.startVoting(msg.sender);
+        emit VoteStarted(proposalId, msg.sender);
     }
-    function performVote(uint proposalId, bool voteCast) isMember("Must be a member to vote") external{
+    function performVote(uint proposalId, bool voteCast) isMember() external{
         if(proposals[proposalId] == address(0))
             revert InvalidProposal();
         Proposal prop = Proposal(proposals[proposalId]);
         prop.vote(voteCast, msg.sender);
+        emit VoteCast(proposalId, msg.sender, voteCast);
     }
     function prepareTally(uint proposalId)
-        external isMember("Prepare Tally can only be called by a member"){
+        external isMember(){
             Voting v = Voting(votingAddress);
             v.prepareTally(proposalId);
+            emit TallyPrepared(proposalId);
         }
     error InvalidProposal();
     error ProposalNotReadyForTally();
@@ -148,10 +160,13 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         }
         else if(status == MembershipManagement.ApprovalStatus.Rejected){
             proposal.updateStatus(MembershipManagement.ApprovalStatus.Rejected);
+            MembershipProposal mp = MembershipProposal(address(proposal));
+            emit MemberRejected(mp.getNation().id);
         }
+        emit VotingCompleted(proposalId, status);
     }
     function completeVoting(uint proposalId)
-        isMember("Must be member to complete voting")
+        isMember()
         external 
     {
         doCompleteVoting(proposalId);
@@ -165,17 +180,10 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         CouncilManager manager = CouncilManager(councilManagementAddress);
         (address memberId, bytes32 role) = manager.acceptNewMember(proposalAddress);
         _grantRole(role, memberId);
-    }
-    function getProposalVotes(uint proposalId) 
-        external view returns(MembershipManagement.Vote[] memory)
-    {
-        if(proposals[proposalId] == address(0))
-            revert();
-        Proposal p = Proposal(proposals[proposalId]);
-        return p.getVotes();
+        emit MemberAccepted(memberId);
     }
     function getMembershipRequests(MembershipManagement.ApprovalStatus status) 
-        private view returns(MembershipManagement.MembershipProposalResponse[] memory)
+        external view returns(MembershipManagement.MembershipProposalResponse[] memory)
     {
         MembershipProposal[] memory props = new MembershipProposal[](membershipProposalAddresses.length);
             uint i = 0;
@@ -196,29 +204,5 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
                 i++;
             }
             return rtn;
-    }
-    function getEnteredMembershipRequests() external view
-    returns(MembershipManagement.MembershipProposalResponse[] memory){
-        return getMembershipRequests(MembershipManagement.ApprovalStatus.Entered);
-    }
-    function getPendingMembershipRequests()
-        external view returns(MembershipManagement.MembershipProposalResponse[] memory)
-    {
-        return getMembershipRequests(MembershipManagement.ApprovalStatus.Pending);
-    }
-    function getReadyMembershipRequests()
-        external view returns(MembershipManagement.MembershipProposalResponse[] memory)
-    {
-        return getMembershipRequests(MembershipManagement.ApprovalStatus.Ready);
-    }
-    function getApprovedMembershipRequests()
-        external view returns(MembershipManagement.MembershipProposalResponse[] memory)
-    {
-        return getMembershipRequests(MembershipManagement.ApprovalStatus.Approved);
-    }
-    function getRejectedMembershipRequests()
-        external view returns(MembershipManagement.MembershipProposalResponse[] memory)
-    {
-        return getMembershipRequests(MembershipManagement.ApprovalStatus.Rejected);
-    }           
+    }          
 }

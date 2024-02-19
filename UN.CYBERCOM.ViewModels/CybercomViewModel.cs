@@ -246,40 +246,45 @@ namespace UN.CYBERCOM.ViewModels
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
                     var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
                     EnteredMembershipProposals.Clear();
-                    var enteredDto = await CyberService.GetEnteredMembershipRequestsQueryAsync(new GetEnteredMembershipRequestsFunction()
+                    var enteredDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
                     {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
                         FromAddress = AccountNumber
                     });
                     EnteredMembershipProposals.AddRange(enteredDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in EnteredMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
                     PendingMembershipProposals.Clear();
-                    var pendingDto = await CyberService.GetPendingMembershipRequestsQueryAsync(new GetPendingMembershipRequestsFunction()
+                    var pendingDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
                     {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
                         FromAddress = AccountNumber
                     });
-                    
+
                     PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in PendingMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var readyDto = await CyberService.GetReadyMembershipRequestsQueryAsync(new GetReadyMembershipRequestsFunction()
+                    var readyDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
                     {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
                         FromAddress = AccountNumber
                     });
                     ReadyMembershipProposals.Clear();
                     ReadyMembershipProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in ReadyMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var rejectedDto = await CyberService.GetRejectedMembershipRequestsQueryAsync(new GetRejectedMembershipRequestsFunction()
+                    var rejectedDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
                     {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Rejected,
                         FromAddress = AccountNumber
                     });
                     RejectedMembershipProposals.Clear();
                     RejectedMembershipProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in RejectedMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var approvedDto = await CyberService.GetApprovedMembershipRequestsQueryAsync(new GetApprovedMembershipRequestsFunction()
+                    var approvedDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
                     {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
                         FromAddress = AccountNumber
                     });
                     ApprovedMembershipProposals.Clear();
@@ -340,11 +345,11 @@ namespace UN.CYBERCOM.ViewModels
     {
         public ProposalViewModel Proposal { get; }
         
-        public Vote Data { get; }
+        public UN.CYBERCOM.Contracts.Proposal.ContractDefinition.Vote Data { get; }
         public bool CastedVote { get => Data.VoteCasted; }
         public Nation Nation { get; }
         protected CybercomViewModel Root { get; }
-        public VoteViewModel(CybercomViewModel root, ProposalViewModel proposal, Vote vote)
+        public VoteViewModel(CybercomViewModel root, ProposalViewModel proposal, UN.CYBERCOM.Contracts.Proposal.ContractDefinition.Vote vote)
         {
             Root = root;
             Data = vote;
@@ -743,10 +748,11 @@ namespace UN.CYBERCOM.ViewModels
             {
                 if (Parent.CyberService != null)
                 {
-                    var votesDto = await Parent.CyberService.GetProposalVotesQueryAsync(new GetProposalVotesFunction()
+                    var ms = new ProposalService(Parent.W3, ProposalAddress);
+                    var votesDto = await ms.GetVotesQueryAsync(new Contracts.Proposal.ContractDefinition.GetVotesFunction()
                     {
-                        ProposalId = BigInteger.Parse(Id),
-                        FromAddress = Parent.AccountNumber
+                        FromAddress = Parent.AccountNumber,
+
                     });
                     Votes.Clear();
                     Votes.AddRange(votesDto.ReturnValue1.Select(
@@ -754,7 +760,7 @@ namespace UN.CYBERCOM.ViewModels
                     foreach (var doc in Documents)
                         doc.Dispose();
                     Documents.Clear();
-                    var ms = new ProposalService(Parent.W3, ProposalAddress);
+                    
                     var docs = await ms.GetDocumentsQueryAsync(new Contracts.Proposal.ContractDefinition.GetDocumentsFunction()
                     {
                         FromAddress = Parent.AccountNumber
