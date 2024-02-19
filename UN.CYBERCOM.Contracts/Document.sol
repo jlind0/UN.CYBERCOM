@@ -33,20 +33,21 @@ contract Document{
     }
 }
 abstract contract DocumentsHolder{
-    mapping(string => address) internal urlToDocument;
+    mapping(bytes => address) internal urlToDocument;
     string[] internal urls;
     function addDocument(address signer, string memory title, string memory url, bytes32 docHash, bytes memory signature) public virtual{
-        if(urlToDocument[url] != address(0))
+        bytes memory urlBytes = bytes(url);
+        if(urlToDocument[urlBytes] != address(0))
             revert();
         Document d = new Document(address(this), signer, signature, docHash, url, title);
         urls.push(url);
-        urlToDocument[url] = address(d);
+        urlToDocument[urlBytes] = address(d);
     }
     function getDocuments() public virtual view returns(MembershipManagement.Doc[] memory){
         MembershipManagement.Doc[] memory docs = new MembershipManagement.Doc[](urls.length);
         uint i = 0;
         while(i < docs.length){
-            Document d = Document(urlToDocument[urls[i]]);
+            Document d = Document(urlToDocument[bytes(urls[i])]);
             docs[i] = MembershipManagement.Doc(d.title(), d.url(), d.dochash(), d.signature(), d.signer(), address(d));
             i++;
         }

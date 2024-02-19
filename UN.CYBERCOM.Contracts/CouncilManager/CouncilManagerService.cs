@@ -151,58 +151,6 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
              return ContractHandler.SendRequestAndWaitForReceiptAsync(acceptNewMemberFunction, cancellationToken);
         }
 
-        public Task<byte[]> CouncilGroupsQueryAsync(CouncilGroupsFunction councilGroupsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<CouncilGroupsFunction, byte[]>(councilGroupsFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> CouncilGroupsQueryAsync(BigInteger returnValue1, BlockParameter blockParameter = null)
-        {
-            var councilGroupsFunction = new CouncilGroupsFunction();
-                councilGroupsFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryAsync<CouncilGroupsFunction, byte[]>(councilGroupsFunction, blockParameter);
-        }
-
-        public Task<byte[]> CouncilRolesQueryAsync(CouncilRolesFunction councilRolesFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<CouncilRolesFunction, byte[]>(councilRolesFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> CouncilRolesQueryAsync(BigInteger returnValue1, BlockParameter blockParameter = null)
-        {
-            var councilRolesFunction = new CouncilRolesFunction();
-                councilRolesFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryAsync<CouncilRolesFunction, byte[]>(councilRolesFunction, blockParameter);
-        }
-
-        public Task<CouncilsOutputDTO> CouncilsQueryAsync(CouncilsFunction councilsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<CouncilsFunction, CouncilsOutputDTO>(councilsFunction, blockParameter);
-        }
-
-        public Task<CouncilsOutputDTO> CouncilsQueryAsync(byte[] returnValue1, BlockParameter blockParameter = null)
-        {
-            var councilsFunction = new CouncilsFunction();
-                councilsFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryDeserializingToObjectAsync<CouncilsFunction, CouncilsOutputDTO>(councilsFunction, blockParameter);
-        }
-
-        public Task<string> DaoAddressQueryAsync(DaoAddressFunction daoAddressFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<DaoAddressFunction, string>(daoAddressFunction, blockParameter);
-        }
-
-        
-        public Task<string> DaoAddressQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<DaoAddressFunction, string>(null, blockParameter);
-        }
-
         public Task<bool> DoesCouncilGroupExistQueryAsync(DoesCouncilGroupExistFunction doesCouncilGroupExistFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<DoesCouncilGroupExistFunction, bool>(doesCouncilGroupExistFunction, blockParameter);
@@ -305,58 +253,6 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
         public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<string> NationAddressesQueryAsync(NationAddressesFunction nationAddressesFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<NationAddressesFunction, string>(nationAddressesFunction, blockParameter);
-        }
-
-        
-        public Task<string> NationAddressesQueryAsync(BigInteger returnValue1, BlockParameter blockParameter = null)
-        {
-            var nationAddressesFunction = new NationAddressesFunction();
-                nationAddressesFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryAsync<NationAddressesFunction, string>(nationAddressesFunction, blockParameter);
-        }
-
-        public Task<NationsOutputDTO> NationsQueryAsync(NationsFunction nationsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<NationsFunction, NationsOutputDTO>(nationsFunction, blockParameter);
-        }
-
-        public Task<NationsOutputDTO> NationsQueryAsync(string returnValue1, BlockParameter blockParameter = null)
-        {
-            var nationsFunction = new NationsFunction();
-                nationsFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryDeserializingToObjectAsync<NationsFunction, NationsOutputDTO>(nationsFunction, blockParameter);
-        }
-
-        public Task<byte[]> NationsCouncilQueryAsync(NationsCouncilFunction nationsCouncilFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<NationsCouncilFunction, byte[]>(nationsCouncilFunction, blockParameter);
-        }
-
-        
-        public Task<byte[]> NationsCouncilQueryAsync(string returnValue1, BlockParameter blockParameter = null)
-        {
-            var nationsCouncilFunction = new NationsCouncilFunction();
-                nationsCouncilFunction.ReturnValue1 = returnValue1;
-            
-            return ContractHandler.QueryAsync<NationsCouncilFunction, byte[]>(nationsCouncilFunction, blockParameter);
-        }
-
-        public Task<BigInteger> TotalCouncilGroupsQueryAsync(TotalCouncilGroupsFunction totalCouncilGroupsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<TotalCouncilGroupsFunction, BigInteger>(totalCouncilGroupsFunction, blockParameter);
-        }
-
-        
-        public Task<BigInteger> TotalCouncilGroupsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<TotalCouncilGroupsFunction, BigInteger>(null, blockParameter);
         }
 
         public Task<BigInteger> TotalNationsQueryAsync(TotalNationsFunction totalNationsFunction, BlockParameter blockParameter = null)

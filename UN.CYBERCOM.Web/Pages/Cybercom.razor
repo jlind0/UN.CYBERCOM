@@ -1,7 +1,7 @@
 ﻿@page "/"
 @using UN.CYBERCOM.ViewModels
 @using UN.CYBERCOM.Web.Helpers
-@using UN.CYBERCOM.Contracts.CYBERCOM.ContractDefinition
+@using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition
 @using System.Threading;
 @inherits ReactiveInjectableComponentBase<CybercomViewModel>
 @inject IJSRuntime JSRun
@@ -55,7 +55,7 @@
             <h2>Entered Membership Requests</h2>
             <TelerikGrid Data="ViewModel.EnteredMembershipProposals">
                 <GridColumns>
-                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="Id" Title="Id" />
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn>
@@ -85,7 +85,7 @@
             <h2>Pending Membership Requests</h2>
             <TelerikGrid Data="ViewModel.PendingMembershipProposals">
                 <GridColumns>
-                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="Id" Title="Id" />
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name"/>
                     <GridColumn Field="Duration" Title="Voting Experation Date"/>
@@ -103,7 +103,7 @@
             <h2>Ready for Final Tally</h2>
             <TelerikGrid Data="ViewModel.ReadyMembershipProposals">
                 <GridColumns>
-                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="Id" Title="Id" />
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -121,7 +121,7 @@
             <h2>Rejected</h2>
             <TelerikGrid Data="ViewModel.RejectedMembershipProposals">
                 <GridColumns>
-                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="Id" Title="Id" />
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -135,7 +135,7 @@
             <h2>Approved</h2>
             <TelerikGrid Data="ViewModel.ApprovedMembershipProposals">
                 <GridColumns>
-                    <GridColumn Field="ProposalId" Title="Id" />
+                    <GridColumn Field="Id" Title="Id" />
                     <GridColumn Field="NewNation.Id" Title="Nation Address" />
                     <GridColumn Field="NewNation.Name" Title="Nation Name" />
                     <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -158,7 +158,7 @@
     {
         ViewModel.SignatureRequest.RegisterHandler(async data =>
         {
-            await JSRun.InvokeVoidAsync("signTransaction", ViewModel.AccountNumber, ViewModel.ContractAddress, data.Input, nameof(CallMemberRequestFin));
+            await JSRun.InvokeVoidAsync("signTransaction", ViewModel.AccountNumber, data.Input.ContractAddress, data.Input.TXData, nameof(CallMemberRequestFin));
             await Slim.WaitAsync();
             data.SetOutput(SignedData ?? throw new InvalidDataException());
             SignedData = null;

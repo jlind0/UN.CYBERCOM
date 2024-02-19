@@ -16,22 +16,22 @@ using System.Text;
 using System.Threading.Tasks;
 using UN.CYBERCOM.Contracts.CybercomDAO;
 using UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition;
-using UN.CYBERCOM.Contracts.MembershipProposal;
-
-using AutoMapper;
 using UN.CYBERCOM.Contracts.Document;
 using Nethereum.Hex.HexConvertors.Extensions;
 using UN.CYBERCOM.Contracts.Proposal;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Security.Cryptography;
-using Org.BouncyCastle.Crypto.Tls;
 
 namespace UN.CYBERCOM.ViewModels
 {
+    public struct TransactionData
+    {
+        public string ContractAddress { get; set; }
+        public string TXData { get; set; }
+    }
     public class CybercomViewModel : ReactiveObject, IDisposable
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
-        public Interaction<string, string> SignatureRequest { get; } = new Interaction<string, string>();
+        public Interaction<TransactionData, string> SignatureRequest { get; } = new Interaction<TransactionData, string>();
         public Interaction<string, string> SignData { get; } = new Interaction<string, string>();
         public ReactiveCommand<Unit, Unit> Load { get; }
         public ReactiveCommand<Unit, Unit> Deploy { get; }
@@ -182,7 +182,12 @@ namespace UN.CYBERCOM.ViewModels
                         
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var signedData = await SignatureRequest.Handle(new TransactionData()
+                    {
+                        ContractAddress = ContractAddress ?? throw new InvalidDataException(),
+                        TXData = data
+
+                    }).GetAwaiter();
                     var str = await W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                     //await CyberService.SubmitMembershipProposalRequestAndWaitForReceiptAsync(new SubmitMembershipProposalFunction().DecodeInput(signedData));
                 }
@@ -430,7 +435,6 @@ namespace UN.CYBERCOM.ViewModels
             }
             try
             {
-                var ps = new ProposalService(Root.W3, ProposalVM.ProposalAddress);
                 var tx = new Contracts.Proposal.ContractDefinition.AddDocumentFunction()
                 {
                     Signature = Signature.HexToByteArray(),
@@ -440,10 +444,15 @@ namespace UN.CYBERCOM.ViewModels
                     FromAddress = Root.AccountNumber,
                     Url = Url ?? throw new InvalidDataException(),
                     AmountToSend = 0,
-                    Gas = 1500000
+                    Gas = 15000000
                 };
                 var data = Convert.ToHexString(tx.GetCallData()).ToLower();
-                var signedData = await Root.SignatureRequest.Handle(data).GetAwaiter();
+                var signedData = await Root.SignatureRequest.Handle(new TransactionData()
+                {
+                    ContractAddress = ProposalVM.ProposalAddress ?? throw new InvalidDataException(),
+                    TXData = data
+
+                }).GetAwaiter();
                 var str = await Root.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
             }
             catch (Exception ex) 
@@ -644,7 +653,7 @@ namespace UN.CYBERCOM.ViewModels
             Approved,
             Rejected
         }
-        protected Interaction<string, string> SignatureRequest { get; }
+        protected Interaction<TransactionData, string> SignatureRequest { get; }
         protected Interaction<string, bool> Alert { get; }
         public abstract string Id { get; }
         public abstract DateTime Duration { get; }
@@ -711,10 +720,15 @@ namespace UN.CYBERCOM.ViewModels
                         ProposalId = BigInteger.Parse(Id),
                         FromAddress = Parent.AccountNumber,
                         AmountToSend = 0,
-                        Gas = 1500000
+                        Gas = 15000000
                     };
                     var data = Convert.ToHexString(svf.GetCallData()).ToLower();
-                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var signedData = await SignatureRequest.Handle(new TransactionData()
+                    {
+                        ContractAddress = Parent.ContractAddress ?? throw new InvalidDataException(),
+                        TXData = data
+
+                    }).GetAwaiter();
                     var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                 }
             }
@@ -762,11 +776,16 @@ namespace UN.CYBERCOM.ViewModels
                     FromAddress = Parent.AccountNumber,
                     ProposalId = BigInteger.Parse(Id),
                     AmountToSend = 0,
-                    Gas = 1500000,
+                    Gas = 15000000,
                     VoteCast = CastVote
                 };
                 var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                var signedData = await SignatureRequest.Handle(new TransactionData()
+                {
+                    ContractAddress = Parent.ContractAddress ?? throw new InvalidDataException(),
+                    TXData = data
+
+                }).GetAwaiter();
                 var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
             }
             catch (Exception ex)
@@ -785,10 +804,15 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = Parent.AccountNumber,
                         ProposalId = BigInteger.Parse(Id),
                         AmountToSend = 0,
-                        Gas = 1500000
+                        Gas = 15000000
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var signedData = await SignatureRequest.Handle(new TransactionData()
+                    {
+                        ContractAddress = Parent.ContractAddress ?? throw new InvalidDataException(),
+                        TXData = data
+
+                    }).GetAwaiter();
                     var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                 }
             }
@@ -808,10 +832,15 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = Parent.AccountNumber,
                         ProposalId = BigInteger.Parse(Id),
                         AmountToSend = 0,
-                        Gas = 1500000
+                        Gas = 15000000
                     };
                     var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                    var signedData = await SignatureRequest.Handle(data).GetAwaiter();
+                    var signedData = await SignatureRequest.Handle(new TransactionData()
+                    {
+                        ContractAddress = Parent.ContractAddress ?? throw new InvalidDataException(),
+                        TXData = data
+
+                    }).GetAwaiter();
                     var str = await Parent.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
                 }
             }

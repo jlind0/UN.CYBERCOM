@@ -43,17 +43,28 @@ const isWalletConnected = async () => {
     }
 }
 window.signTransaction = async function(fromAddress,contractAddress, tranData, rtnFunction){
-    
+    const nonce = await window.ethereum.request({
+        method: 'eth_getTransactionCount',
+        params: [fromAddress, 'latest'], // 'latest' for the most recent count
+    });
+
+    // Define the transaction object, including the updated nonce
     const tx = {
         from: fromAddress,
         to: contractAddress,
         data: tranData,
-        value: 0,
-        gas: 15000000
+        value: '0x0', // It's better to specify the value in hexadecimal format
+        gas: '0xe4e1c0', // Also in hexadecimal, equivalent to 15,000,000 gas
+        nonce: nonce, // Use the incremented nonce
     };
+    const currentGasPrice = await window.ethereum.request({ method: 'eth_gasPrice', params: [] });
+    // Convert currentGasPrice from hex to integer, multiply by 1.1, then round it to get an integer
+    const increasedGasPrice = "0x" + Math.floor(parseInt(currentGasPrice, 16) * 1.1).toString(16);
+    tx.gasPrice = increasedGasPrice; // Set the increased gas price
+    // Sign the transaction
     const signedTx = await window.ethereum.request({
         method: 'eth_signTransaction',
-        params: [ tx],
+        params: [tx],
     });
     dotNetObject.invokeMethodAsync(rtnFunction, signedTx);
 }

@@ -14,4 +14,8 @@
     <ProjectReference Include="..\UN.CYBERCOM.Contracts.Core\UN.CYBERCOM.Contracts.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="CYBERCOM_OLD\ContractDefinition\" />
+  </ItemGroup>
+
 </Project>
