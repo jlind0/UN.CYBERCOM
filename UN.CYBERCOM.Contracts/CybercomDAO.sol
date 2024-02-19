@@ -153,8 +153,6 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         return CouncilManager(councilManagementAddress).getCouncil(role);
     }
 
-    error NotOwner();
-
     /**
      * @dev Starts the voting process for a specified proposal.
      * @param proposalId The ID of the proposal to start voting on.
@@ -196,9 +194,6 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         v.prepareTally(proposalId);
         emit TallyPrepared(proposalId);
     }
-
-    error InvalidProposal();
-    error ProposalNotReadyForTally();
 
     /**
      * @dev Completes the voting process for a specific proposal.
