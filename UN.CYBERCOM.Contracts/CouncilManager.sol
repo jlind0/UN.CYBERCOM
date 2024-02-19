@@ -1,76 +1,101 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
-
 import "./MembershipManagement.sol";
 import "./Proposal.sol";
-
 contract CouncilManager{
-
-    bytes32   public immutable BROKER_ROLE   = keccak256("BROKER");
-    bytes32   public immutable POWER_ROLE    = keccak256("POWER");
-    bytes32   public immutable CENTRAL_ROLE  = keccak256("CENTRAL");
-    bytes32   public immutable EMERGING_ROLE = keccak256("EMERGING");
-    bytes32   public immutable GENERAL_ROLE  = keccak256("GENERAL");
-    bytes32   public immutable LESSER_ROLE   = keccak256("LESSER");
-    bytes32   public immutable INDUSTRY_ROLE = keccak256("INDUSTRY");
-
-    uint      public totalNations;
-    uint      public totalCouncilGroups;
-    address   public daoAddress;
-    address[] public nationAddresses;
-
-    mapping(address => MembershipManagement.Nation) public nations;
-    mapping(address => bytes32) public nationsCouncil;
-    mapping(uint => bytes32) public councilGroups;
-    bytes32[] public councilRoles;
-    mapping(bytes32 => MembershipManagement.Council) public councils;
-
-    // Events
-    event NewMemberAccepted(address indexed memberId, bytes32 role);
-    event CouncilGroupExistsCheck(uint groupId, bool exists);
-    event NationExistenceCheck(address memberId, bool exists);
-    event CouncilRetrieved(bytes32 role);
-    event CouncilGroupRoleRetrieved(uint groupId, bytes32 role);
-
-    constructor(address _daoAddress) {
+    bytes32 public immutable BROKER_ROLE = keccak256("BROKER");
+    bytes32 public immutable POWER_ROLE = keccak256("POWER");
+    bytes32 public immutable CENTRAL_ROLE = keccak256("CENTRAL");
+    bytes32 public immutable EMERGING_ROLE = keccak256("EMERGING");
+    bytes32 public immutable GENERAL_ROLE = keccak256("GENERAL");
+    bytes32 public immutable LESSER_ROLE = keccak256("LESSER");
+    bytes32 public immutable INDUSTRY_ROLE = keccak256("INDUSTRY");
+    uint public totalNations;
+    uint totalCouncilGroups;
+    address[] nationAddresses;
+    mapping(address => MembershipManagement.Nation) nations;
+    mapping(address => bytes32) nationsCouncil;
+    mapping(uint => bytes32) councilGroups;
+    bytes32[] councilRoles;
+    mapping(bytes32 => MembershipManagement.Council) councils;
+    address daoAddress;
+    constructor(address _daoAddress){
         daoAddress = _daoAddress;
-        setupCouncil(BROKER_ROLE, "Broker", MembershipManagement.VotingParameters(false, false, 0, 0, 1, 0, 1, 0, false), "Primary");
-        setupCouncil(POWER_ROLE, "Power", MembershipManagement.VotingParameters(false, true, 0, 1, 1, 6, 1, 1, false), "Primary");
-        setupCouncil(CENTRAL_ROLE, "Central", MembershipManagement.VotingParameters(false, false, 0, 1, 3, 1, 1, 2, false), "Primary");
-        setupCouncil(EMERGING_ROLE, "Emerging", MembershipManagement.VotingParameters(true, false, 1, 0, 5, 3, 1, 4, false), "Group A", "Group B");
-        setupCouncil(GENERAL_ROLE, "General", MembershipManagement.VotingParameters(false, false, 0, 0, 1, 1, 1, 2, true), "Primary");
-        setupCouncil(LESSER_ROLE, "Lesser", MembershipManagement.VotingParameters(false, false, 0, 1, 3, 1, 1, 5, false), "Primary");
-        setupCouncil(INDUSTRY_ROLE, "Industry", MembershipManagement.VotingParameters(false, false, 0, 1, 7, 1, 1, 1, false), "Primary");
+        councils[BROKER_ROLE].name = "Broker";
+        councils[BROKER_ROLE].role = BROKER_ROLE;
+        councils[BROKER_ROLE].votingParameters = MembershipManagement.VotingParameters(false, false, 0, 0, 1, 0, 1, 0, false);
+        councils[BROKER_ROLE].groups.push();
+        councils[BROKER_ROLE].groups[0].id = ++totalCouncilGroups;
+        councils[BROKER_ROLE].groups[0].name = "Primary";
+        councilGroups[totalCouncilGroups] = BROKER_ROLE;
+        
+        councilRoles.push(BROKER_ROLE);
+        councils[POWER_ROLE].name = "Power";
+        councils[POWER_ROLE].role = POWER_ROLE;
+        councils[POWER_ROLE].votingParameters = MembershipManagement.VotingParameters(false, true, 0, 1, 1, 6, 1, 1, false);
+        councils[POWER_ROLE].groups.push();
+        councils[POWER_ROLE].groups[0].id = ++totalCouncilGroups;
+        councils[POWER_ROLE].groups[0].name = "Primary";
+        councilGroups[totalCouncilGroups] = POWER_ROLE;
+        
+        councilRoles.push(POWER_ROLE);
+        councils[CENTRAL_ROLE].name = "Central";
+        councils[CENTRAL_ROLE].role = CENTRAL_ROLE;
+        councils[CENTRAL_ROLE].votingParameters = MembershipManagement.VotingParameters(false, false, 0, 1, 3, 1, 1, 2, false);
+        councils[CENTRAL_ROLE].groups.push();
+        councils[CENTRAL_ROLE].groups[0].name = "Primary";
+        councils[CENTRAL_ROLE].groups[0].id = ++totalCouncilGroups;
+        councilGroups[totalCouncilGroups] = CENTRAL_ROLE;
+        
+        councilRoles.push(CENTRAL_ROLE);
+        councils[EMERGING_ROLE].name = "Emerging";
+        councils[EMERGING_ROLE].role = EMERGING_ROLE;
+        councils[EMERGING_ROLE].votingParameters = MembershipManagement.VotingParameters(true, false, 1, 0, 5, 3, 1, 4, false);
+        councils[EMERGING_ROLE].groups.push();
+        councils[EMERGING_ROLE].groups[0].id = ++totalCouncilGroups;
+        councils[EMERGING_ROLE].groups[0].name = "Group A";
+        councilGroups[totalCouncilGroups] = EMERGING_ROLE;
+        councils[EMERGING_ROLE].groups.push();
+        councils[EMERGING_ROLE].groups[1].id = ++totalCouncilGroups;
+        councils[EMERGING_ROLE].groups[1].name = "Group B";
+        councilGroups[totalCouncilGroups] = EMERGING_ROLE;
+        
+        councilRoles.push(EMERGING_ROLE);
+        councils[GENERAL_ROLE].name = "General";
+        councils[GENERAL_ROLE].role = GENERAL_ROLE;
+        councils[GENERAL_ROLE].votingParameters = MembershipManagement.VotingParameters(false, false, 0, 0, 1, 1, 1, 2, true);
+        councils[GENERAL_ROLE].groups.push();
+        councils[GENERAL_ROLE].groups[0].name = "Primary";
+        councils[GENERAL_ROLE].groups[0].id = ++totalCouncilGroups;
+        councilGroups[totalCouncilGroups] = GENERAL_ROLE;
+        councilRoles.push(GENERAL_ROLE);
+
+        councils[LESSER_ROLE].name = "Lesser";
+        councils[LESSER_ROLE].role = LESSER_ROLE;
+        councils[LESSER_ROLE].votingParameters = MembershipManagement.VotingParameters(false, false, 0, 1, 3, 1, 1, 5, false);
+        councils[LESSER_ROLE].groups.push();
+        councils[LESSER_ROLE].groups[0].name = "Primary";
+        councils[LESSER_ROLE].groups[0].id = ++totalCouncilGroups;
+        councilGroups[totalCouncilGroups] = LESSER_ROLE;
+        councilRoles.push(LESSER_ROLE);
+
+        councils[INDUSTRY_ROLE].name = "Industry";
+        councils[INDUSTRY_ROLE].role = INDUSTRY_ROLE;
+        councils[INDUSTRY_ROLE].votingParameters = MembershipManagement.VotingParameters(false, false, 0, 1, 7, 1, 1, 1, false);
+        councils[INDUSTRY_ROLE].groups.push();
+        councils[INDUSTRY_ROLE].groups[0].name = "Primary";
+        councils[INDUSTRY_ROLE].groups[0].id = ++totalCouncilGroups;
+        councilGroups[totalCouncilGroups] = INDUSTRY_ROLE;
+        councilRoles.push(INDUSTRY_ROLE);
     }
-
-    function setupCouncil(bytes32 role, string memory name, MembershipManagement.VotingParameters memory votingParams, string memory groupName, string memory secondaryGroupName) internal {
-        councils[role].name = name;
-        councils[role].role = role;
-        councils[role].votingParameters = votingParams;
-
-        councils[role].groups.push(MembershipManagement.CouncilGroup({
-            id: ++totalCouncilGroups,
-            name: groupName
-        }));
-
-        if (bytes(secondaryGroupName).length > 0) {
-            councils[role].groups.push(MembershipManagement.CouncilGroup({
-                id: ++totalCouncilGroups,
-                name: secondaryGroupName
-            }));
-        }
-
-        councilGroups[totalCouncilGroups] = role;
-        councilRoles.push(role);
-    }
-    /**
-     * @dev Retrieves a list of all councils.
-     * @return An array of Council structures.
-     */
-    function getCouncils() public view returns(MembershipManagement.Council[] memory) {
+    function getCouncils()
+        public view returns(MembershipManagement.Council[] memory)
+    {
+        uint i = 0;
         MembershipManagement.Council[] memory cs = new MembershipManagement.Council[](councilRoles.length);
-        for (uint i = 0; i < councilRoles.length; i++) {
+        while(i < councilRoles.length){
             cs[i] = councils[councilRoles[i]];
+            i++;
         }
         return cs;
     }
@@ -81,37 +106,30 @@ contract CouncilManager{
         require(msg.sender == daoAddress, "Must be called from DAO");
         _;
     }
-
-    /**
-     * @dev Accepts a new member into a council based on the proposal.
-     * @param proposalAddress The address of the membership proposal contract.
-     */
     function acceptNewMember(address proposalAddress)
-        public isFromDAO() returns(address memberId, bytes32 role) {
+        public isFromDAO() returns(address memberId, bytes32 role)
+    {
         MembershipProposal prop = MembershipProposal(proposalAddress);
         uint groupId = prop.groupId();
-        bytes32 role = councilGroups[groupId];
-        MembershipManagement.Council storage targetCouncil = councils[role];
-        
+        MembershipManagement.Council storage targetCouncil = councils[councilGroups[groupId]];
+        uint i = 0;
+        while(i < targetCouncil.groups.length){
+            if(targetCouncil.groups[i].id == groupId)
+                break;
+            i++;
+        }
+        MembershipManagement.CouncilGroup storage group = targetCouncil.groups[i];
         totalNations++;
         MembershipManagement.Nation memory nat = prop.getNation();
         nations[nat.id] = nat;
         nationAddresses.push(nat.id);
-        nationsCouncil[nat.id] = role;
-        targetCouncil.groups[0].members.push(nat); // Assuming first group for simplicity
-
-        emit NewMemberAccepted(nat.id, role);
-        return (nat.id, role);
+        nationsCouncil[nat.id] = targetCouncil.role;
+        group.members.push(nat);
+        return (nat.id, targetCouncil.role);
     }
-
-    /**
-     * @dev Finds the council group for a given nation ID within a council.
-     * @param council The council to search within.
-     * @param nationId The ID of the nation.
-     * @return The council group the nation belongs to.
-     */
     function findCouncilGroup(MembershipManagement.Council memory council, address nationId)
-        private pure returns(MembershipManagement.CouncilGroup memory) {
+        private pure returns(MembershipManagement.CouncilGroup memory)
+    {
         uint j = 0;
         while(j < council.groups.length)
         {
@@ -126,26 +144,25 @@ contract CouncilManager{
         }
         revert("Council not found");
     }
-
-    /**
-     * @dev Returns the index associated with a council role.
-     * @param role The bytes32 hash of the role.
-     * @return The index of the council in the array.
-     */
-    function getIndexForCouncil(bytes32 role) private view returns (uint) {
-        for (uint i = 0; i < councilRoles.length; i++) {
-            if (councilRoles[i] == role) {
-                return i;
-            }
-        }
-        revert("Council role not found");
+    function getIndexForCouncil(bytes32 role)
+        private view returns(uint)
+    {
+        if(role == GENERAL_ROLE)
+            return 0;
+        if(role == POWER_ROLE)
+            return 1;
+        if(role == CENTRAL_ROLE)
+            return 2;
+        if(role == EMERGING_ROLE)
+            return 3;
+        if(role == BROKER_ROLE)
+            return 4;
+        if(role == LESSER_ROLE)
+            return 5;
+        if(role == INDUSTRY_ROLE)
+            return 6;
+        revert("Council not found");
     }
-
-    /**
-     * @dev Processes an array of votes and organizes them into council votes.
-     * @param vs Array of individual votes.
-     * @return Array of council votes.
-     */
     function getCouncilVotes(MembershipManagement.Vote[] memory vs)
         public view returns(MembershipManagement.CouncilVotes[] memory)
     {
@@ -181,39 +198,22 @@ contract CouncilManager{
         }
         return cvs;
     }
-
-    /**
-     * @dev Retrieves the council associated with a given role.
-     */
     function getCouncil(bytes32 role) 
-        public view returns (MembershipManagement.Council memory) {
-        emit CouncilRetrieved(role);
+        public view returns (MembershipManagement.Council memory)
+    {
         return councils[role];
     }
-
-    /**
-     * @dev Gets the role associated with a specific council group.
-     */
-    function getCouncilRoleForGroup(uint groupId) public view returns(bytes32) {
-        emit CouncilGroupRoleRetrieved(groupId, councilGroups[groupId]);
+    function getCouncilRoleForGroup(uint groupId) public view returns(bytes32){
         return councilGroups[groupId];
     }
-
-    /**
-     * @dev Checks if a council group exists.
-     */
-    function doesCouncilGroupExist(uint groupId) public view returns(bool) {
-        bool exists = councils[councilGroups[groupId]].groups.length > 0;
-        emit CouncilGroupExistsCheck(groupId, exists);
-        return exists;
+    function doesCouncilGroupExist (uint groupId) public view returns(bool){
+        return councils[councilGroups[groupId]].groups.length > 0;
     }
-
-    /**
-     * @dev Checks if a nation is already registered.
-     */
-    function doesNationExist(address memberId) public view returns(bool) {
-        bool exists = nations[memberId].id == memberId;
-        emit NationExistenceCheck(memberId, exists);
-        return exists;
+    function doesNationExist(address memberId) public view returns(bool){
+        return nations[memberId].id == memberId;
+    }
+    function getCouncilForNation(address nationId) public view returns(MembershipManagement.Council memory){
+        MembershipManagement.Council memory c = councils[nationsCouncil[nationId]];
+        return c;
     }
 }
