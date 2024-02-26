@@ -179,6 +179,17 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
             return ContractHandler.QueryAsync<DoesNationExistFunction, bool>(doesNationExistFunction, blockParameter);
         }
 
+        public Task<List<byte[]>> GetAllRolesQueryAsync(GetAllRolesFunction getAllRolesFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetAllRolesFunction, List<byte[]>>(getAllRolesFunction, blockParameter);
+        }
+
+        
+        public Task<List<byte[]>> GetAllRolesQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetAllRolesFunction, List<byte[]>>(null, blockParameter);
+        }
+
         public Task<GetCouncilOutputDTO> GetCouncilQueryAsync(GetCouncilFunction getCouncilFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilFunction, GetCouncilOutputDTO>(getCouncilFunction, blockParameter);
@@ -255,15 +266,54 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
             return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
         }
 
-        public Task<BigInteger> TotalNationsQueryAsync(TotalNationsFunction totalNationsFunction, BlockParameter blockParameter = null)
+        public Task<GetNationOutputDTO> GetNationQueryAsync(GetNationFunction getNationFunction, BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryAsync<TotalNationsFunction, BigInteger>(totalNationsFunction, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetNationFunction, GetNationOutputDTO>(getNationFunction, blockParameter);
+        }
+
+        public Task<GetNationOutputDTO> GetNationQueryAsync(string id, BlockParameter blockParameter = null)
+        {
+            var getNationFunction = new GetNationFunction();
+                getNationFunction.Id = id;
+            
+            return ContractHandler.QueryDeserializingToObjectAsync<GetNationFunction, GetNationOutputDTO>(getNationFunction, blockParameter);
+        }
+
+        public Task<BigInteger> GetNationCountQueryAsync(GetNationCountFunction getNationCountFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetNationCountFunction, BigInteger>(getNationCountFunction, blockParameter);
         }
 
         
-        public Task<BigInteger> TotalNationsQueryAsync(BlockParameter blockParameter = null)
+        public Task<BigInteger> GetNationCountQueryAsync(BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryAsync<TotalNationsFunction, BigInteger>(null, blockParameter);
+            return ContractHandler.QueryAsync<GetNationCountFunction, BigInteger>(null, blockParameter);
+        }
+
+        public Task<string> RemoveNationRequestAsync(RemoveNationFunction removeNationFunction)
+        {
+             return ContractHandler.SendRequestAsync(removeNationFunction);
+        }
+
+        public Task<TransactionReceipt> RemoveNationRequestAndWaitForReceiptAsync(RemoveNationFunction removeNationFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(removeNationFunction, cancellationToken);
+        }
+
+        public Task<string> RemoveNationRequestAsync(string nationId)
+        {
+            var removeNationFunction = new RemoveNationFunction();
+                removeNationFunction.NationId = nationId;
+            
+             return ContractHandler.SendRequestAsync(removeNationFunction);
+        }
+
+        public Task<TransactionReceipt> RemoveNationRequestAndWaitForReceiptAsync(string nationId, CancellationTokenSource cancellationToken = null)
+        {
+            var removeNationFunction = new RemoveNationFunction();
+                removeNationFunction.NationId = nationId;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(removeNationFunction, cancellationToken);
         }
     }
 }

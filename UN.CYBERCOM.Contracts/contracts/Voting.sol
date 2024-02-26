@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "./Utils.sol";
 import "./MembershipManagement.sol";
 import "./Proposal.sol";
+import "./CybercomDAO.sol";
 contract Voting is VRFConsumerBaseV2{
     uint64 s_subscriptionId;
     VRFCoordinatorV2Interface COORDINATOR;
-    address vrfCoordinator = 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625;
-    bytes32 s_keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
-    uint32 callbackGasLimit = 1000000;
-    uint16 requestConfirmations = 3;
+    address constant vrfCoordinator = 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625;
+    bytes32 constant s_keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
+    uint32 constant callbackGasLimit = 1000000;
+    uint16 constant requestConfirmations = 3;
     uint[] proposalIds;
     mapping(uint => address) proposals;
     mapping(uint => uint) requestIdToProposal;
-    address daoAddress;
-    address councilManagerAddress;
+    address  daoAddress;
+    address  councilManagerAddress;
     mapping(uint => MembershipManagement.TallyResult) proposalTallyResults;
     constructor(uint64 subscriptionId, address _daoAddress, address _councilManagerAddress) VRFConsumerBaseV2(vrfCoordinator) {
         COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
@@ -29,13 +27,19 @@ contract Voting is VRFConsumerBaseV2{
         daoAddress = _daoAddress;
         councilManagerAddress = _councilManagerAddress;
     }
-     modifier isFromDAO(string memory message) {
-        require(msg.sender == daoAddress, message);
+    error Unauthorized();
+     modifier isFromDAO() {
+        CybercomDAO dao = CybercomDAO(daoAddress);
+        MembershipManagement.ContractAddresses memory addresses = dao.getContractAddresses();
+
+        if(msg.sender != daoAddress && 
+            msg.sender != addresses.membershipManagerAddress && 
+            msg.sender != addresses.membershipRemovalAddress) revert Unauthorized();
         _;
     }
-    
+    error VotingNotClosed();
     function prepareTally(uint proposalId)
-        isFromDAO("Only members can trigger a Tally") 
+        isFromDAO() 
         public returns (uint256 requestId) 
     {
         Proposal p = Proposal(proposals[proposalId]);
@@ -55,27 +59,29 @@ contract Voting is VRFConsumerBaseV2{
             requestIdToProposal[requestId] = proposalId;
         }
         else
-            revert("Voting has not closed");
+            revert VotingNotClosed();
     }
-   
+    error InvalidProposal();
+    error InvalidContractState();
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) 
     internal override {
         if(requestIdToProposal[requestId] == 0)
-            revert("Invalid proposal");
+            revert InvalidProposal();
         Proposal prop = Proposal(proposals[requestIdToProposal[requestId]]);
         MembershipManagement.ApprovalStatus status = prop.status();
         if(status != MembershipManagement.ApprovalStatus.Pending)
-            revert("Invalid contract state");
+            revert InvalidContractState();
         prop.setRandomNumber(randomWords[0]);
         prop.setProcessing(false);
         prop.updateStatus(MembershipManagement.ApprovalStatus.Ready);
     }
+    error DuplicateContract();
     function addProposal(address proposalAddress) 
-        isFromDAO("Only accepts calls from DAO") public{
+        isFromDAO() public{
         Proposal proposal = Proposal(proposalAddress);
         uint proposalId = proposal.id();
         if(proposals[proposalId] != address(0))
-            revert("Proposal already inited");
+            revert DuplicateContract();
         proposalIds.push(proposalId);
         proposals[proposalId] = proposalAddress;
     }
@@ -86,7 +92,7 @@ contract Voting is VRFConsumerBaseV2{
         revert();
     }
     
-    function tallyVotes(uint proposalId) isFromDAO("Only accepts calls from DAO")
+    function tallyVotes(uint proposalId) isFromDAO()
         public returns (MembershipManagement.ApprovalStatus)
     {
         CouncilManager manager = CouncilManager(councilManagerAddress);

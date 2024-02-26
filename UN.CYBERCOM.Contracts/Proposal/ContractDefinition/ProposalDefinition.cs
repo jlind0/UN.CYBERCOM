@@ -179,6 +179,66 @@ namespace UN.CYBERCOM.Contracts.Proposal.ContractDefinition
 
     }
 
+    public partial class StatusUpdatedEventDTO : StatusUpdatedEventDTOBase { }
+
+    [Event("StatusUpdated")]
+    public class StatusUpdatedEventDTOBase : IEventDTO
+    {
+        [Parameter("uint256", "proposalId", 1, true )]
+        public virtual BigInteger ProposalId { get; set; }
+        [Parameter("uint8", "newStatus", 2, false )]
+        public virtual byte NewStatus { get; set; }
+    }
+
+    public partial class VoteCastedEventDTO : VoteCastedEventDTOBase { }
+
+    [Event("VoteCasted")]
+    public class VoteCastedEventDTOBase : IEventDTO
+    {
+        [Parameter("uint256", "proposalId", 1, true )]
+        public virtual BigInteger ProposalId { get; set; }
+        [Parameter("address", "member", 2, false )]
+        public virtual string Member { get; set; }
+        [Parameter("bool", "vote", 3, false )]
+        public virtual bool Vote { get; set; }
+    }
+
+    public partial class VotingCompletedEventDTO : VotingCompletedEventDTOBase { }
+
+    [Event("VotingCompleted")]
+    public class VotingCompletedEventDTOBase : IEventDTO
+    {
+        [Parameter("uint256", "proposalId", 1, true )]
+        public virtual BigInteger ProposalId { get; set; }
+    }
+
+    public partial class VotingStartedEventDTO : VotingStartedEventDTOBase { }
+
+    [Event("VotingStarted")]
+    public class VotingStartedEventDTOBase : IEventDTO
+    {
+        [Parameter("uint256", "proposalId", 1, true )]
+        public virtual BigInteger ProposalId { get; set; }
+    }
+
+    public partial class AuthorizationErrorError : AuthorizationErrorErrorBase { }
+    [Error("AuthorizationError")]
+    public class AuthorizationErrorErrorBase : IErrorDTO
+    {
+    }
+
+    public partial class VotingClosedError : VotingClosedErrorBase { }
+    [Error("VotingClosed")]
+    public class VotingClosedErrorBase : IErrorDTO
+    {
+    }
+
+    public partial class VotingNotStartedError : VotingNotStartedErrorBase { }
+    [Error("VotingNotStarted")]
+    public class VotingNotStartedErrorBase : IErrorDTO
+    {
+    }
+
 
 
     public partial class DurationOutputDTO : DurationOutputDTOBase { }

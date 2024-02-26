@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "./MembershipManagement.sol";
 import "./CouncilManager.sol";
 import "./Document.sol";
+import "./Utils.sol";
 
 /**
  * @title Proposal
@@ -22,10 +23,7 @@ abstract contract Proposal is DocumentsHolder {
     address public owner;
     address[] voters;
     mapping(address => MembershipManagement.Vote) votes;
-    address daoAddress;
-    address votingAddress;
-    address councilManagementAddress;
-
+    MembershipManagement.ContractAddresses contractAddresses;
     event VotingStarted(uint indexed proposalId);
     event VotingCompleted(uint indexed proposalId);
     event StatusUpdated(uint indexed proposalId, MembershipManagement.ApprovalStatus newStatus);
@@ -33,43 +31,28 @@ abstract contract Proposal is DocumentsHolder {
 
     error AuthorizationError();
     modifier isFromDAOorVoting() {
-        if(msg.sender != daoAddress && msg.sender != votingAddress && msg.sender != owner) revert AuthorizationError();
+        if(msg.sender != contractAddresses.daoAddress && msg.sender != contractAddresses.votingAddress && msg.sender != contractAddresses.membershipManagerAddress && msg.sender != contractAddresses.membershipRemovalAddress && msg.sender != owner) revert AuthorizationError();
         _;
     }
 
     modifier isFromDAO() {
-        if(msg.sender != daoAddress)revert AuthorizationError();
+        if(msg.sender != contractAddresses.daoAddress && msg.sender != contractAddresses.votingAddress && msg.sender != contractAddresses.membershipManagerAddress && msg.sender != contractAddresses.membershipRemovalAddress)revert AuthorizationError();
         _;
     }
 
     modifier isFromVoting() {
-        if(msg.sender != votingAddress)revert AuthorizationError();
+        if(msg.sender != contractAddresses.votingAddress)revert AuthorizationError();
         _;
     }
-
-    /**
-     * @dev Constructor to initialize the proposal contract.
-     * @param _owner Address of the proposal owner.
-     * @param _daoAddress Address of the DAO contract.
-     * @param _votingAddress Address of the Voting contract.
-     * @param _councilManager Address of the CouncilManager contract.
-     * @param _id Proposal identifier.
-     * @param _proposalType Type of the proposal.
-     * @param _duration Duration of the voting period.
-     */
     constructor(
         address _owner, 
-        address _daoAddress, 
-        address _votingAddress, 
-        address _councilManager, 
+        MembershipManagement.ContractAddresses memory _contractAddresses,
         uint _id, 
         MembershipManagement.ProposalTypes _proposalType, 
         uint _duration
     ) {
         owner = _owner;
-        daoAddress = _daoAddress;
-        votingAddress = _votingAddress;
-        councilManagementAddress = _councilManager;
+        contractAddresses = _contractAddresses;
         id = _id;
         proposalType = _proposalType;
         duration = _duration < 1 minutes ? 1 minutes : _duration;
@@ -165,16 +148,13 @@ contract MembershipProposal is Proposal {
      */
     constructor(
         address _owner, 
-        address _daoAddress, 
-        address _votingAddress, 
-        address _councilManager, 
-        uint _id, 
-        MembershipManagement.ProposalTypes _proposalType, 
+        MembershipManagement.ContractAddresses memory _contractAddresses,
+        uint _id,
         uint _duration, 
         MembershipManagement.Nation memory _nation, 
         uint _groupId
     ) 
-        Proposal(_owner, _daoAddress, _votingAddress, _councilManager, _id, _proposalType, _duration)
+        Proposal(_owner, _contractAddresses, _id, MembershipManagement.ProposalTypes.Membership, _duration)
     {
         nation = _nation;
         groupId = _groupId;
@@ -193,7 +173,7 @@ contract MembershipProposal is Proposal {
      * @return A MembershipProposalResponse struct with proposal details.
      */
     function getMembershipResponse() public view returns(MembershipManagement.MembershipProposalResponse memory) {
-        CouncilManager manager = CouncilManager(councilManagementAddress);
+        CouncilManager manager = CouncilManager(contractAddresses.councilManagementAddress);
         return MembershipManagement.MembershipProposalResponse(
             id, 
             nation.id, 
@@ -211,4 +191,84 @@ contract MembershipProposal is Proposal {
     }
 
     // Other functions and code specific to MembershipProposal are unchanged
+}
+
+contract MembershipRemovalProposal is Proposal{
+    MembershipManagement.Nation nationToRemove;
+     constructor(
+        address _owner, 
+        MembershipManagement.ContractAddresses memory _contractAddresses,
+        uint _id,
+        uint _duration, 
+        MembershipManagement.Nation memory _nation
+    ) 
+        Proposal(_owner, _contractAddresses , _id, MembershipManagement.ProposalTypes.MembershipRemoval, _duration)
+    {
+        nationToRemove = _nation;
+    }
+    function getNation() public view returns(MembershipManagement.Nation memory) {
+        return nationToRemove;
+    }
+    function getMembershipResponse() public view returns(MembershipManagement.MembershipRemovalResponse memory) {
+        return MembershipManagement.MembershipRemovalResponse(
+            id, 
+            nationToRemove, 
+            getVotes(), 
+            duration, 
+            status, 
+            isProcessing, 
+            votingStarted, 
+            owner, 
+            address(this)
+        );
+    }
+}
+contract ProposalStorageManager{
+    address daoAddress;
+    mapping(address => address) membershipProposals;
+    mapping(address => address) membershipRemovalProposals;
+    mapping(uint => address) public proposals;
+    address[] membershipProposalAddresses;
+    address[] membershipRemovalProposalAddresses;
+    uint public proposalCount = 0;
+    constructor(address _daoAddress){
+        daoAddress = _daoAddress;
+    }
+    modifier isFromDAO() {
+        if(daoAddress == msg.sender) revert Utils.AuthorizationError();
+        _;
+    }
+    function getNextProposalId() public isFromDAO() returns(uint){
+        return ++proposalCount;
+    }
+    function getMembershipProposal(address key) public view returns(address){
+        return membershipProposals[key];
+    }
+    function setMembershipProposal(address key, address value) public isFromDAO(){
+        membershipProposals[key] = value;
+    }
+    function getProposal(uint key) public view returns(address){
+        return proposals[key];
+    }
+    function setProposal(uint key, address value) public isFromDAO(){
+        proposals[key] = value;
+    }
+    function getMembershipRemovalProposal(address key) public view returns(address){
+        return membershipRemovalProposals[key];
+    }
+    function setMembershipRemovalProposal(address key, address value) isFromDAO() public{
+        membershipRemovalProposals[key] = value;
+    }
+    function addMembershipProposal(address key) isFromDAO() public{
+        membershipProposalAddresses.push(key);
+    }
+    function addMembershipRemovalProposal(address key) isFromDAO() public{
+        membershipRemovalProposalAddresses.push(key);
+    }
+    function getMembershipProposalAddresses() public view returns(address[] memory){
+        return membershipProposalAddresses;
+    }
+    function getMembershipRemovalProposalAddresses() public view returns(address[] memory){
+        return membershipRemovalProposalAddresses;
+    }
 }

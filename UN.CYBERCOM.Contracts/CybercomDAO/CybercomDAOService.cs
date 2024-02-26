@@ -59,6 +59,52 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
             return ContractHandler.QueryAsync<DefaultAdminRoleFunction, byte[]>(null, blockParameter);
         }
 
+        public Task<string> AcceptMemberExtRequestAsync(AcceptMemberExtFunction acceptMemberExtFunction)
+        {
+             return ContractHandler.SendRequestAsync(acceptMemberExtFunction);
+        }
+
+        public Task<TransactionReceipt> AcceptMemberExtRequestAndWaitForReceiptAsync(AcceptMemberExtFunction acceptMemberExtFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(acceptMemberExtFunction, cancellationToken);
+        }
+
+        public Task<string> AcceptMemberExtRequestAsync(string proposalAddress)
+        {
+            var acceptMemberExtFunction = new AcceptMemberExtFunction();
+                acceptMemberExtFunction.ProposalAddress = proposalAddress;
+            
+             return ContractHandler.SendRequestAsync(acceptMemberExtFunction);
+        }
+
+        public Task<TransactionReceipt> AcceptMemberExtRequestAndWaitForReceiptAsync(string proposalAddress, CancellationTokenSource cancellationToken = null)
+        {
+            var acceptMemberExtFunction = new AcceptMemberExtFunction();
+                acceptMemberExtFunction.ProposalAddress = proposalAddress;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(acceptMemberExtFunction, cancellationToken);
+        }
+
+        public Task<string> CloseInitializationRequestAsync(CloseInitializationFunction closeInitializationFunction)
+        {
+             return ContractHandler.SendRequestAsync(closeInitializationFunction);
+        }
+
+        public Task<string> CloseInitializationRequestAsync()
+        {
+             return ContractHandler.SendRequestAsync<CloseInitializationFunction>();
+        }
+
+        public Task<TransactionReceipt> CloseInitializationRequestAndWaitForReceiptAsync(CloseInitializationFunction closeInitializationFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(closeInitializationFunction, cancellationToken);
+        }
+
+        public Task<TransactionReceipt> CloseInitializationRequestAndWaitForReceiptAsync(CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync<CloseInitializationFunction>(null, cancellationToken);
+        }
+
         public Task<string> CompleteVotingRequestAsync(CompleteVotingFunction completeVotingFunction)
         {
              return ContractHandler.SendRequestAsync(completeVotingFunction);
@@ -85,51 +131,24 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
              return ContractHandler.SendRequestAndWaitForReceiptAsync(completeVotingFunction, cancellationToken);
         }
 
-        public Task<string> CouncilManagementAddressQueryAsync(CouncilManagementAddressFunction councilManagementAddressFunction, BlockParameter blockParameter = null)
+        public Task<ContractsOutputDTO> ContractsQueryAsync(ContractsFunction contractsFunction, BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryAsync<CouncilManagementAddressFunction, string>(councilManagementAddressFunction, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<ContractsFunction, ContractsOutputDTO>(contractsFunction, blockParameter);
         }
 
-        
-        public Task<string> CouncilManagementAddressQueryAsync(BlockParameter blockParameter = null)
+        public Task<ContractsOutputDTO> ContractsQueryAsync(BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryAsync<CouncilManagementAddressFunction, string>(null, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<ContractsFunction, ContractsOutputDTO>(null, blockParameter);
         }
 
-        public Task<GetCouncilOutputDTO> GetCouncilQueryAsync(GetCouncilFunction getCouncilFunction, BlockParameter blockParameter = null)
+        public Task<GetContractAddressesOutputDTO> GetContractAddressesQueryAsync(GetContractAddressesFunction getContractAddressesFunction, BlockParameter blockParameter = null)
         {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilFunction, GetCouncilOutputDTO>(getCouncilFunction, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetContractAddressesFunction, GetContractAddressesOutputDTO>(getContractAddressesFunction, blockParameter);
         }
 
-        public Task<GetCouncilOutputDTO> GetCouncilQueryAsync(byte[] role, BlockParameter blockParameter = null)
+        public Task<GetContractAddressesOutputDTO> GetContractAddressesQueryAsync(BlockParameter blockParameter = null)
         {
-            var getCouncilFunction = new GetCouncilFunction();
-                getCouncilFunction.Role = role;
-            
-            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilFunction, GetCouncilOutputDTO>(getCouncilFunction, blockParameter);
-        }
-
-        public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(GetCouncilsFunction getCouncilsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(getCouncilsFunction, blockParameter);
-        }
-
-        public Task<GetCouncilsOutputDTO> GetCouncilsQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetCouncilsFunction, GetCouncilsOutputDTO>(null, blockParameter);
-        }
-
-        public Task<GetMembershipRequestsOutputDTO> GetMembershipRequestsQueryAsync(GetMembershipRequestsFunction getMembershipRequestsFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipRequestsFunction, GetMembershipRequestsOutputDTO>(getMembershipRequestsFunction, blockParameter);
-        }
-
-        public Task<GetMembershipRequestsOutputDTO> GetMembershipRequestsQueryAsync(byte status, BlockParameter blockParameter = null)
-        {
-            var getMembershipRequestsFunction = new GetMembershipRequestsFunction();
-                getMembershipRequestsFunction.Status = status;
-            
-            return ContractHandler.QueryDeserializingToObjectAsync<GetMembershipRequestsFunction, GetMembershipRequestsOutputDTO>(getMembershipRequestsFunction, blockParameter);
+            return ContractHandler.QueryDeserializingToObjectAsync<GetContractAddressesFunction, GetContractAddressesOutputDTO>(null, blockParameter);
         }
 
         public Task<byte[]> GetRoleAdminQueryAsync(GetRoleAdminFunction getRoleAdminFunction, BlockParameter blockParameter = null)
@@ -187,6 +206,32 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
                 hasRoleFunction.Account = account;
             
             return ContractHandler.QueryAsync<HasRoleFunction, bool>(hasRoleFunction, blockParameter);
+        }
+
+        public Task<string> InitializeRequestAsync(InitializeFunction initializeFunction)
+        {
+             return ContractHandler.SendRequestAsync(initializeFunction);
+        }
+
+        public Task<TransactionReceipt> InitializeRequestAndWaitForReceiptAsync(InitializeFunction initializeFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(initializeFunction, cancellationToken);
+        }
+
+        public Task<string> InitializeRequestAsync(ContractAddresses contracts)
+        {
+            var initializeFunction = new InitializeFunction();
+                initializeFunction.Contracts = contracts;
+            
+             return ContractHandler.SendRequestAsync(initializeFunction);
+        }
+
+        public Task<TransactionReceipt> InitializeRequestAndWaitForReceiptAsync(ContractAddresses contracts, CancellationTokenSource cancellationToken = null)
+        {
+            var initializeFunction = new InitializeFunction();
+                initializeFunction.Contracts = contracts;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(initializeFunction, cancellationToken);
         }
 
         public Task<string> PerformVoteRequestAsync(PerformVoteFunction performVoteFunction)
@@ -351,6 +396,32 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
              return ContractHandler.SendRequestAndWaitForReceiptAsync(submitMembershipProposalFunction, cancellationToken);
         }
 
+        public Task<string> SubmitMembershipRemovalProposalRequestAsync(SubmitMembershipRemovalProposalFunction submitMembershipRemovalProposalFunction)
+        {
+             return ContractHandler.SendRequestAsync(submitMembershipRemovalProposalFunction);
+        }
+
+        public Task<TransactionReceipt> SubmitMembershipRemovalProposalRequestAndWaitForReceiptAsync(SubmitMembershipRemovalProposalFunction submitMembershipRemovalProposalFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(submitMembershipRemovalProposalFunction, cancellationToken);
+        }
+
+        public Task<string> SubmitMembershipRemovalProposalRequestAsync(MembershipRemovalRequest request)
+        {
+            var submitMembershipRemovalProposalFunction = new SubmitMembershipRemovalProposalFunction();
+                submitMembershipRemovalProposalFunction.Request = request;
+            
+             return ContractHandler.SendRequestAsync(submitMembershipRemovalProposalFunction);
+        }
+
+        public Task<TransactionReceipt> SubmitMembershipRemovalProposalRequestAndWaitForReceiptAsync(MembershipRemovalRequest request, CancellationTokenSource cancellationToken = null)
+        {
+            var submitMembershipRemovalProposalFunction = new SubmitMembershipRemovalProposalFunction();
+                submitMembershipRemovalProposalFunction.Request = request;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(submitMembershipRemovalProposalFunction, cancellationToken);
+        }
+
         public Task<bool> SupportsInterfaceQueryAsync(SupportsInterfaceFunction supportsInterfaceFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<SupportsInterfaceFunction, bool>(supportsInterfaceFunction, blockParameter);
@@ -363,17 +434,6 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
                 supportsInterfaceFunction.InterfaceId = interfaceId;
             
             return ContractHandler.QueryAsync<SupportsInterfaceFunction, bool>(supportsInterfaceFunction, blockParameter);
-        }
-
-        public Task<string> VotingAddressQueryAsync(VotingAddressFunction votingAddressFunction, BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<VotingAddressFunction, string>(votingAddressFunction, blockParameter);
-        }
-
-        
-        public Task<string> VotingAddressQueryAsync(BlockParameter blockParameter = null)
-        {
-            return ContractHandler.QueryAsync<VotingAddressFunction, string>(null, blockParameter);
         }
     }
 }

@@ -1,7 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
-
+import "./MembershipManagement.sol";
 library Utils {
+    event ProposalCreated(uint indexed proposalId, address proposalAddress);
+    event VoteStarted(uint indexed proposalId, address startedBy);
+    event VoteCast(uint indexed proposalId, address indexed voter, bool vote);
+    event TallyPrepared(uint indexed proposalId);
+    event VotingCompleted(uint indexed proposalId, MembershipManagement.ApprovalStatus status);
+    event MemberAccepted(address indexed memberId);
+    event MemberRejected(address indexed memberId);
+    event MemberRemoved(address indexed memberId);
+    event MemberKept(address indexed memberId);
+    error GroupNotFound();
+    error NationAlreadyMember();
+    error OutstandingProposal();
+    error LogicError();
+    error NationDoesNotExist();
+    error NotOwner();
+    error InvalidProposal();
+    error ProposalNotReadyForTally();
+    error AuthorizationError();
+    error AlreadyInitialized();
      function getNumberOfDigits(uint number) private pure returns (uint) {
         uint digits = 0;
         while (number != 0) {

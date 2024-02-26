@@ -20,6 +20,11 @@ using UN.CYBERCOM.Contracts.Document;
 using Nethereum.Hex.HexConvertors.Extensions;
 using UN.CYBERCOM.Contracts.Proposal;
 using System.Security.Cryptography;
+using UN.CYBERCOM.Contracts.CouncilManager;
+using UN.CYBERCOM.Contracts.CouncilManager.ContractDefinition;
+using UN.CYBERCOM.Contracts.ProposalStorageManager;
+using UN.CYBERCOM.Contracts.Voting;
+using UN.CYBERCOM.Contracts.MembershipRemovalManager;
 
 namespace UN.CYBERCOM.ViewModels
 {
@@ -73,11 +78,29 @@ namespace UN.CYBERCOM.ViewModels
             get => votingAddress;
             set => this.RaiseAndSetIfChanged(ref votingAddress, value);
         }
+        private string? membershipAddress;
+        public string? MembershipAddress
+        {
+            get => membershipAddress;
+            set => this.RaiseAndSetIfChanged(ref membershipAddress, value);
+        }
+        private string? membershipRemovalAddress;
+        public string? MembershipRemovalAddress
+        {
+            get => membershipRemovalAddress;
+            set => this.RaiseAndSetIfChanged(ref membershipRemovalAddress, value);
+        }
         private string? councilManagerAddress;
         public string? CouncilManagerAddress
         {
             get => councilManagerAddress;
             set => this.RaiseAndSetIfChanged(ref councilManagerAddress, value);
+        }
+        private string? proposalStorageAddress;
+        public string? ProposalStorageAddress
+        {
+            get => proposalStorageAddress;
+            set => this.RaiseAndSetIfChanged(ref proposalStorageAddress, value);
         }
         private string? selectedCouncilRole;
         public string? SelectedCouncilRole
@@ -111,7 +134,7 @@ namespace UN.CYBERCOM.ViewModels
         protected ulong SubscriptionId { get; }
         private readonly CompositeDisposable disposable = new CompositeDisposable();
         public ObservableCollection<CouncilViewModel> Councils { get; } = new ObservableCollection<CouncilViewModel>();
-        public ObservableCollection<Nation> Nations { get; } = new ObservableCollection<Nation>();
+        public ObservableCollection<Contracts.CouncilManager.ContractDefinition.Nation> Nations { get; } = new ObservableCollection<Contracts.CouncilManager.ContractDefinition.Nation>();
         public ObservableCollection<MembershipProposalViewModel> EnteredMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> PendingMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
@@ -152,6 +175,7 @@ namespace UN.CYBERCOM.ViewModels
                     await DoLoad();
             }).DisposeWith(disposable);
         }
+        public const string ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
         protected async Task DoMembershipRequest()
         {
             try
@@ -169,13 +193,14 @@ namespace UN.CYBERCOM.ViewModels
                         Request = new MembershipProposalRequest()
                         {
                             Member = NewMemberAddress,
-                            NewNation = new Nation()
+                            NewNation = new Contracts.CybercomDAO.ContractDefinition.Nation()
                             {
                                 Name = NewNationName,
                                 Id = NewMemberAddress
                             },
                             GroupId = BigInteger.Parse(SelectedCouncil.SelectedGroupId),
-                            Duration = BigInteger.Zero
+                            Duration = BigInteger.Zero,
+                            Owner = ZERO_ADDRESS
                         },
                         AmountToSend = 0,
                         Gas = 15000000,
@@ -213,6 +238,50 @@ namespace UN.CYBERCOM.ViewModels
                         SubscriptionId = SubscriptionId
                     });
                     ContractAddress = rcpt.ContractAddress;
+                    var rcpt2 = await CouncilManagerService.DeployContractAndWaitForReceiptAsync(W3, new CouncilManagerDeployment()
+                    {
+                        DaoAddress = ContractAddress
+                    });
+                    CouncilManagerAddress = rcpt2.ContractAddress;
+                    var rcpt3 = await ProposalStorageManagerService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.ProposalStorageManager.ContractDefinition.ProposalStorageManagerDeployment()
+                    {
+                        DaoAddress = ContractAddress
+                    });
+                    ProposalStorageAddress = rcpt3.ContractAddress;
+                    var rcpt4 = await VotingService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.Voting.ContractDefinition.VotingDeployment()
+                    {
+                        SubscriptionId = SubscriptionId,
+                        DaoAddress = ContractAddress,
+                        CouncilManagerAddress = CouncilManagerAddress
+                    });
+                    VotingAddress = rcpt4.ContractAddress;
+                    var rcpt5 = await MembershipRemovalManagerService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.MembershipRemovalManager.ContractDefinition.MembershipRemovalManagerDeployment()
+                    {
+                        VotingAddress = VotingAddress,
+                        CouncilManagementAddress = CouncilManagerAddress,
+                        ProposalStorageAddress = ProposalStorageAddress,
+                        DaoAddress = ContractAddress
+                    });
+                    MembershipRemovalAddress = rcpt5.ContractAddress;
+                    var rcpt6 = await Contracts.MembershipManager.MembershipManagerService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.MembershipManager.ContractDefinition.MembershipManagerDeployment()
+                    {
+                        VotingAddress = VotingAddress,
+                        CouncilManagementAddress = CouncilManagerAddress,
+                        ProposalStorageAddress = ProposalStorageAddress,
+                        DaoAddress = ContractAddress
+                    });
+                    MembershipAddress = rcpt6.ContractAddress;
+                    var service = new CybercomDAOService(W3, ContractAddress);
+                    await service.InitializeRequestAndWaitForReceiptAsync(new ContractAddresses()
+                    {
+                        DaoAddress = ContractAddress,
+                        VotingAddress = VotingAddress,
+                        CouncilManagementAddress = CouncilManagerAddress,
+                        ProposalStorageAddress = ProposalStorageAddress,
+                        MembershipManagerAddress = MembershipAddress,
+                        MembershipRemovalAddress = MembershipRemovalAddress
+                    });
+                    await service.CloseInitializationRequestAndWaitForReceiptAsync();
                     IsDeployed = true;
                 }
             }
@@ -234,10 +303,13 @@ namespace UN.CYBERCOM.ViewModels
                     return;
                 if(CyberService != null)
                 {
-                    VotingAddress = await CyberService.VotingAddressQueryAsync();
-                    CouncilManagerAddress = await CyberService.CouncilManagementAddressQueryAsync();
+                    var contracts = await CyberService.ContractsQueryAsync();
+                    VotingAddress = contracts.VotingAddress;
+                    CouncilManagerAddress = contracts.CouncilManagementAddress;
+                    MembershipAddress = contracts.MembershipManagerAddress;
+                    MembershipRemovalAddress = contracts.MembershipRemovalAddress;
                     Councils.Clear();
-                    var councilDto = await CyberService.GetCouncilsQueryAsync(new GetCouncilsFunction()
+                    var councilDto = await new CouncilManagerService(W3, CouncilManagerAddress).GetCouncilsQueryAsync(new Contracts.CouncilManager.ContractDefinition.GetCouncilsFunction()
                     {
                         FromAddress = AccountNumber
                     });
@@ -246,7 +318,9 @@ namespace UN.CYBERCOM.ViewModels
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
                     var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
                     EnteredMembershipProposals.Clear();
-                    var enteredDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
+                    var memberManager = new UN.CYBERCOM.Contracts.MembershipManager.MembershipManagerService(W3, MembershipAddress);
+
+                    var enteredDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
                     {
                         Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
                         FromAddress = AccountNumber
@@ -255,7 +329,7 @@ namespace UN.CYBERCOM.ViewModels
                     foreach (var pmp in EnteredMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
                     PendingMembershipProposals.Clear();
-                    var pendingDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
+                    var pendingDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
                     {
                         Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
                         FromAddress = AccountNumber
@@ -264,7 +338,7 @@ namespace UN.CYBERCOM.ViewModels
                     PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in PendingMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var readyDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
+                    var readyDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
                     {
                         Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
                         FromAddress = AccountNumber
@@ -273,7 +347,7 @@ namespace UN.CYBERCOM.ViewModels
                     ReadyMembershipProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in ReadyMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var rejectedDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
+                    var rejectedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
                     {
                         Status = (byte)ProposalViewModel.ApprovalStatus.Rejected,
                         FromAddress = AccountNumber
@@ -282,7 +356,7 @@ namespace UN.CYBERCOM.ViewModels
                     RejectedMembershipProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in RejectedMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-                    var approvedDto = await CyberService.GetMembershipRequestsQueryAsync(new GetMembershipRequestsFunction()
+                    var approvedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
                     {
                         Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
                         FromAddress = AccountNumber
@@ -347,7 +421,7 @@ namespace UN.CYBERCOM.ViewModels
         
         public UN.CYBERCOM.Contracts.Proposal.ContractDefinition.Vote Data { get; }
         public bool CastedVote { get => Data.VoteCasted; }
-        public Nation Nation { get; }
+        public Contracts.CouncilManager.ContractDefinition.Nation Nation { get; }
         protected CybercomViewModel Root { get; }
         public VoteViewModel(CybercomViewModel root, ProposalViewModel proposal, UN.CYBERCOM.Contracts.Proposal.ContractDefinition.Vote vote)
         {
@@ -860,11 +934,11 @@ namespace UN.CYBERCOM.ViewModels
     {
         
         
-        protected MembershipProposalResponse Data { get; }
-        public Council Council { get; }
-        public CouncilGroup CouncilGroup { get; }
+        protected Contracts.MembershipManager.ContractDefinition.MembershipProposalResponse Data { get; }
+        public Contracts.CouncilManager.ContractDefinition.Council Council { get; }
+        public Contracts.CouncilManager.ContractDefinition.CouncilGroup CouncilGroup { get; }
         
-        public Nation NewNation
+        public Contracts.MembershipManager.ContractDefinition.Nation NewNation
         {
             get => Data.NewNation;
         }
@@ -881,7 +955,7 @@ namespace UN.CYBERCOM.ViewModels
 
         public override string ProposalAddress => Data.ProposalAddress;
 
-        public MembershipProposalViewModel(CybercomViewModel vm, MembershipProposalResponse data, Council council) :base(vm)
+        public MembershipProposalViewModel(CybercomViewModel vm, Contracts.MembershipManager.ContractDefinition.MembershipProposalResponse data, Contracts.CouncilManager.ContractDefinition.Council council) :base(vm)
         {
             Data = data;
             Council = council;
@@ -900,7 +974,7 @@ namespace UN.CYBERCOM.ViewModels
     }
     public class CouncilViewModel : ReactiveObject
     {
-        public Council Data { get; }
+        public Contracts.CouncilManager.ContractDefinition.Council Data { get; }
         public string Name
         {
             get => Data.Name;
@@ -920,7 +994,7 @@ namespace UN.CYBERCOM.ViewModels
             get => selectedGrouplId;
             set => this.RaiseAndSetIfChanged(ref selectedGrouplId, value);
         }
-        public CouncilViewModel(Council data) 
+        public CouncilViewModel(Contracts.CouncilManager.ContractDefinition.Council data) 
         {
             Data = data;
             Groups = new ObservableCollection<CouncilGroupViewModel>(data.Groups.Select(g => new CouncilGroupViewModel(g)).ToArray());
@@ -928,10 +1002,10 @@ namespace UN.CYBERCOM.ViewModels
     }
     public class CouncilGroupViewModel : ReactiveObject
     {
-        protected CouncilGroup Data { get; }
+        protected Contracts.CouncilManager.ContractDefinition.CouncilGroup Data { get; }
         public string Name { get => Data.Name; }
         public string Id { get => Data.Id.ToString(); }
-        public CouncilGroupViewModel(CouncilGroup data)
+        public CouncilGroupViewModel(Contracts.CouncilManager.ContractDefinition.CouncilGroup data)
         {
             Data = data;
         }

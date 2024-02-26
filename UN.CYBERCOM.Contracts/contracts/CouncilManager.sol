@@ -10,7 +10,12 @@ contract CouncilManager{
     bytes32 public immutable GENERAL_ROLE = keccak256("GENERAL");
     bytes32 public immutable LESSER_ROLE = keccak256("LESSER");
     bytes32 public immutable INDUSTRY_ROLE = keccak256("INDUSTRY");
-    uint public totalNations;
+
+    function getAllRoles() public view returns(bytes32[] memory){
+        return councilRoles;
+    }
+
+    uint totalNations;
     uint totalCouncilGroups;
     address[] nationAddresses;
     mapping(address => MembershipManagement.Nation) nations;
@@ -99,17 +104,63 @@ contract CouncilManager{
         }
         return cs;
     }
+    error NationDoesNotExist();
+    function removeNation(address nationId) isFromDAO() public returns(bytes32 role){
+        if(!doesNationExist(nationId))
+            revert NationDoesNotExist();
+        MembershipManagement.Council storage c = councils[nationsCouncil[nationId]];
+        uint i = 0;
+        bool stop = false;
+        while(i < c.groups.length){
+            MembershipManagement.CouncilGroup storage cg = c.groups[i];
+            uint j = 0;
+            while(j < cg.members.length){
+                if(cg.members[j].id == nationId){
+                    if(j != cg.members.length - 1)
+                        cg.members[j] = cg.members[cg.members.length - 1];
+                    cg.members.pop();
+                    uint k = 0;
+                    while(k < nationAddresses.length){
+                        if(nationAddresses[k] == nationId){
+                            if(k != nationAddresses.length -1){
+                                nationAddresses[k] = nationAddresses[nationAddresses.length - 1];
+                            }
+                            nationAddresses.pop();
+                        }
+                        k++;
+                    }
+                    delete nations[nationId];
+                    delete nationsCouncil[nationId];
+                    stop = true;
+                    break;
+                }
+                j++;
+            }
+            if(stop)
+                break;
+            i++;
+        }
+        return c.role;
+    }
+    function getNationCount() public view returns (uint){
+        return nationAddresses.length;
+    }
     function getCouncilForGroupId(uint groupId) public view returns(MembershipManagement.Council memory){
         return councils[councilGroups[groupId]];
     }
+    error Unauthorized();
     modifier isFromDAO() {
-        require(msg.sender == daoAddress, "Must be called from DAO");
+        if(msg.sender != daoAddress) revert Unauthorized();
         _;
     }
+    error NationAlreadyExists();
     function acceptNewMember(address proposalAddress)
         public isFromDAO() returns(address memberId, bytes32 role)
     {
         MembershipProposal prop = MembershipProposal(proposalAddress);
+        MembershipManagement.Nation memory nat = prop.getNation();
+        if(doesNationExist(nat.id))
+            revert NationAlreadyExists();
         uint groupId = prop.groupId();
         MembershipManagement.Council storage targetCouncil = councils[councilGroups[groupId]];
         uint i = 0;
@@ -120,13 +171,14 @@ contract CouncilManager{
         }
         MembershipManagement.CouncilGroup storage group = targetCouncil.groups[i];
         totalNations++;
-        MembershipManagement.Nation memory nat = prop.getNation();
+        
         nations[nat.id] = nat;
         nationAddresses.push(nat.id);
         nationsCouncil[nat.id] = targetCouncil.role;
         group.members.push(nat);
         return (nat.id, targetCouncil.role);
     }
+    error CouncilNotFound();
     function findCouncilGroup(MembershipManagement.Council memory council, address nationId)
         private pure returns(MembershipManagement.CouncilGroup memory)
     {
@@ -142,7 +194,7 @@ contract CouncilManager{
             }
             j++;
         }
-        revert("Council not found");
+        revert CouncilNotFound();
     }
     function getIndexForCouncil(bytes32 role)
         private view returns(uint)
@@ -161,8 +213,9 @@ contract CouncilManager{
             return 5;
         if(role == INDUSTRY_ROLE)
             return 6;
-        revert("Council not found");
+        revert CouncilNotFound();
     }
+    error LogicError();
     function getCouncilVotes(MembershipManagement.Vote[] memory vs)
         public view returns(MembershipManagement.CouncilVotes[] memory)
     {
@@ -191,7 +244,7 @@ contract CouncilManager{
                 targetGroup++;
             }
             if(targetGroup > cv.votes.length)
-                revert("Logic error");
+                revert LogicError();
             cv.votes[targetGroup].votes[i] = vt;
             cvs[idx] = cv;
             i++;
@@ -211,6 +264,9 @@ contract CouncilManager{
     }
     function doesNationExist(address memberId) public view returns(bool){
         return nations[memberId].id == memberId;
+    }
+    function getNation(address id) view public returns(MembershipManagement.Nation memory){
+        return nations[id];
     }
     function getCouncilForNation(address nationId) public view returns(MembershipManagement.Council memory){
         MembershipManagement.Council memory c = councils[nationsCouncil[nationId]];

@@ -64,20 +64,21 @@
                             {
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).StartVoting.BindCommand<MouseEventArgs>()">Start Voting</TelerikButton>
                             <AddDocumentView ViewModel="((ProposalViewModel)context).AddDocumentVM" />
-                                <ul>
-                                    @foreach(var doc in ((ProposalViewModel)context).Documents)
-                                    {
-                                        <li>
-                                            <a href="@doc.Url" target="_blank">@doc.Title</a>
-                                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
-                                            <p>Signature: @doc.Signature</p>
-                                            <p>Signer: @doc.Signer</p>
-                                            <p>Document Address: @doc.Address</p>
-                                        </li>
-                                    }
-                                </ul>
+                                
                                 
                             }
+                            <ul>
+                                @foreach (var doc in ((ProposalViewModel)context).Documents)
+                                {
+                                    <li>
+                                        <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                        <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                        <p>Signature: @doc.Signature</p>
+                                        <p>Signer: @doc.Signer</p>
+                                        <p>Document Address: @doc.Address</p>
+                                    </li>
+                                }
+                            </ul>
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -96,6 +97,18 @@
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).Tally.BindCommand<MouseEventArgs>()">Tally</TelerikButton>
                             }
                             <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                            <ul>
+                                @foreach (var doc in ((ProposalViewModel)context).Documents)
+                                {
+                                    <li>
+                                        <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                        <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                        <p>Signature: @doc.Signature</p>
+                                        <p>Signer: @doc.Signer</p>
+                                        <p>Document Address: @doc.Address</p>
+                                    </li>
+                                }
+                            </ul>
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -114,6 +127,18 @@
                                 <TelerikButton OnClick="((MembershipProposalViewModel)context).CompleteTally.BindCommand<MouseEventArgs>()">Complete</TelerikButton>
                             }
                             <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                            <ul>
+                                @foreach (var doc in ((ProposalViewModel)context).Documents)
+                                {
+                                    <li>
+                                        <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                        <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                        <p>Signature: @doc.Signature</p>
+                                        <p>Signer: @doc.Signer</p>
+                                        <p>Document Address: @doc.Address</p>
+                                    </li>
+                                }
+                            </ul>
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -128,6 +153,18 @@
                     <GridColumn>
                         <Template>
                             <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                            <ul>
+                                @foreach (var doc in ((ProposalViewModel)context).Documents)
+                                {
+                                    <li>
+                                        <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                        <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                        <p>Signature: @doc.Signature</p>
+                                        <p>Signer: @doc.Signer</p>
+                                        <p>Document Address: @doc.Address</p>
+                                    </li>
+                                }
+                            </ul>
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -142,6 +179,18 @@
                     <GridColumn>
                         <Template>
                             <MembershipProposalVoteView ViewModel="(MembershipProposalViewModel)context" />
+                            <ul>
+                                @foreach (var doc in ((ProposalViewModel)context).Documents)
+                                {
+                                    <li>
+                                        <a href="@doc.Url" target="_blank">@doc.Title</a>
+                                        <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                                        <p>Signature: @doc.Signature</p>
+                                        <p>Signer: @doc.Signer</p>
+                                        <p>Document Address: @doc.Address</p>
+                                    </li>
+                                }
+                            </ul>
                         </Template>
                     </GridColumn>
                 </GridColumns>

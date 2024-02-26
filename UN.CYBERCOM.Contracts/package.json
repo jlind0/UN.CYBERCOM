@@ -2,5 +2,9 @@
   "dependencies": {
     "@chainlink/contracts": "^0.8.0",
     "@openzeppelin/contracts": "^5.0.1"
+  },
+  "devDependencies": {
+    "@tenderly/hardhat-tenderly": "^2.2.2",
+    "hardhat": "^2.20.1"
   }
 }

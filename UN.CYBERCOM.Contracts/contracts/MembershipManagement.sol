@@ -4,13 +4,26 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 library MembershipManagement {
+    struct ContractAddresses{
+        address daoAddress;
+        address votingAddress;
+        address councilManagementAddress;
+        address proposalStorageAddress;
+        address membershipRemovalAddress;
+        address membershipManagerAddress;
+    }
     struct MembershipProposalRequest {
         address member;
         Nation newNation;
         uint groupId;
         uint duration;
+        address owner;
     }
-
+    struct MembershipRemovalRequest {
+        address nationToRemove;
+        uint duration;
+        address owner;
+    }
     struct Nation {
         address id;
         string name;
@@ -57,6 +70,17 @@ library MembershipManagement {
         address owner;
         address proposalAddress;
     }
+    struct MembershipRemovalResponse{
+        uint id;
+        Nation nationToRemove;
+        Vote[] votes;
+        uint duration;
+        ApprovalStatus status;
+        bool isProcessing;
+        bool votingStarted;
+        address owner;
+        address proposalAddress;
+    }
     struct Doc{
         string  title;
         string  url;
@@ -79,7 +103,8 @@ library MembershipManagement {
     enum ProposalTypes {
         Membership,
         MinVoteDuration,
-        UpdateVotingParameters
+        UpdateVotingParameters,
+        MembershipRemoval
     }
     enum ApprovalStatus {
         Entered,

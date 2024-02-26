@@ -5,7 +5,7 @@ using System.Numerics;
 using Nethereum.Hex.HexTypes;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace UN.CYBERCOM.Contracts.CybercomDAO.ContractDefinition
+namespace UN.CYBERCOM.Contracts.MembershipManager.ContractDefinition
 {
     public partial class MembershipProposalRequest : MembershipProposalRequestBase { }
 
