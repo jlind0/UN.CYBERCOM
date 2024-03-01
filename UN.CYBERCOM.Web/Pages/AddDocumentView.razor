@@ -4,7 +4,7 @@
 @inherits ReactiveComponentBase<AddDocumentViewModel>
 @if(ViewModel != null)
 {
-    <button class="btn btn-primary" @onclick="ViewModel.Open.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-plus"></i></button>
+    <button class="btn btn-primary" @onclick="ViewModel.Open.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-plus"></i><i class="fa-solid fa-file"></i></button>
     <TelerikDialog Title="Add Document" @bind-Visible="ViewModel.IsOpen">
         <DialogContent>
             <TelerikForm Model="ViewModel">

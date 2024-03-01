@@ -1,0 +1,48 @@
+﻿@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using System.Threading
+@using DynamicData.Binding
+@inherits ReactiveComponentBase<AddMembershipViewModel>
+
+<button class="btn btn-primary" @onclick="ViewModel.Open.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-plus"></i><i class="fa-sharp fa-solid fa-flag"></i></button>
+    <TelerikDialog Title="Add Member" @bind-Visible="ViewModel.IsOpen" @ref="addDialog">
+        <DialogContent>
+            <TelerikDropDownList TItem="CouncilViewModel" TValue="string" Data="ViewModel.Councils" TextField="Name" @bind-Value="ViewModel.SelectedCouncilRole" ValueField="Role" />
+            @if (ViewModel.SelectedCouncil != null)
+            {
+                <TelerikDropDownList TItem="CouncilGroupViewModel" TValue="string" Data="ViewModel.SelectedCouncil.Groups" TextField="Name" ValueField="Id" @bind-Value="ViewModel.SelectedCouncil.SelectedGroupId" />
+                @if (!string.IsNullOrEmpty(ViewModel.SelectedCouncil.SelectedGroupId))
+                {
+                    <p>
+                        <label>Address</label>
+                        <TelerikTextBox @bind-Value="ViewModel.NewMemberAddress" />
+                    </p>
+
+                    <p>
+                        <label>Nation Name</label>
+                        <TelerikTextBox @bind-Value="ViewModel.NewNationName" />
+                    </p>
+                    <button @onclick="ViewModel.MembershipRequest.BindCommand<MouseEventArgs>()" type="button">Request Membership</button>
+                }
+            }
+            
+        </DialogContent>
+</TelerikDialog>
+@code {
+    protected TelerikDialog? addDialog;
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.ViewModel?.WhenPropertyChanged(p => p.SelectedCouncilRole).Subscribe(p =>
+            {
+                this.ViewModel?.SelectedCouncil?.WhenPropertyChanged(p => p.SelectedGroupId).Subscribe(p =>
+                {
+                    addDialog?.Refresh();
+                });
+                addDialog?.Refresh();
+            });
+        }
+        base.OnAfterRender(firstRender);
+    }
+}

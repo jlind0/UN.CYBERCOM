@@ -25,6 +25,8 @@ using UN.CYBERCOM.Contracts.CouncilManager.ContractDefinition;
 using UN.CYBERCOM.Contracts.ProposalStorageManager;
 using UN.CYBERCOM.Contracts.Voting;
 using UN.CYBERCOM.Contracts.MembershipRemovalManager;
+using System.Windows.Input;
+using Org.BouncyCastle.Asn1.Crmf;
 
 namespace UN.CYBERCOM.ViewModels
 {
@@ -33,6 +35,113 @@ namespace UN.CYBERCOM.ViewModels
         public string ContractAddress { get; set; }
         public string TXData { get; set; }
     }
+    public class AddMembershipViewModel : ReactiveObject
+    {
+        private bool isOpen;
+        public bool IsOpen
+        {
+            get => isOpen;
+            set => this.RaiseAndSetIfChanged(ref isOpen, value);
+        }
+        public ObservableCollection<CouncilViewModel> Councils
+        {
+            get => CybercomVM.Councils;
+        }
+        protected CybercomViewModel CybercomVM { get; }
+        private string? selectedCouncilRole;
+        public string? SelectedCouncilRole
+        {
+            get => selectedCouncilRole;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref selectedCouncilRole, value);
+                this.RaisePropertyChanged(nameof(SelectedCouncil));
+            }
+        }
+        public CouncilViewModel? SelectedCouncil
+        {
+            get => CybercomVM.Councils.SingleOrDefault(c => c.Role == selectedCouncilRole);
+        }
+        private string? newNationName;
+        public string? NewNationName
+        {
+            get => newNationName;
+            set => this.RaiseAndSetIfChanged(ref newNationName, value);
+        }
+        private string? newMemberAddress;
+       
+
+        public string? NewMemberAddress
+        {
+            get => newMemberAddress;
+            set => this.RaiseAndSetIfChanged(ref newMemberAddress, value);
+        }
+        public ReactiveCommand<Unit, Unit> MembershipRequest { get; }
+        public AddMembershipViewModel(CybercomViewModel cybercomVM)
+        {
+            CybercomVM = cybercomVM;
+            MembershipRequest = ReactiveCommand.CreateFromTask(DoMembershipRequest);
+            Open = ReactiveCommand.Create(DoOpen);
+        }
+        public ICommand Open { get; }
+        protected void DoOpen()
+        {
+            SelectedCouncilRole = null;
+            NewNationName = null;
+            NewMemberAddress = null;
+            IsOpen = true;
+        }
+        protected async Task DoMembershipRequest()
+        {
+            try
+            {
+                if (CybercomVM.IsDeployed && CybercomVM.CyberService != null &&
+                    !string.IsNullOrWhiteSpace(SelectedCouncilRole) &&
+                    !string.IsNullOrWhiteSpace(SelectedCouncil?.SelectedGroupId) &&
+                    !string.IsNullOrWhiteSpace(NewMemberAddress) &&
+                    !string.IsNullOrWhiteSpace(NewNationName))
+                {
+                    CybercomVM.IsLoading = true;
+                    var tran = new SubmitMembershipProposalFunction()
+                    {
+                        FromAddress = CybercomVM.AccountNumber,
+                        Request = new MembershipProposalRequest()
+                        {
+                            Member = NewMemberAddress,
+                            NewNation = new Contracts.CybercomDAO.ContractDefinition.Nation()
+                            {
+                                Name = NewNationName,
+                                Id = NewMemberAddress
+                            },
+                            GroupId = BigInteger.Parse(SelectedCouncil.SelectedGroupId),
+                            Duration = BigInteger.Zero,
+                            Owner = CybercomViewModel.ZERO_ADDRESS
+                        },
+                        AmountToSend = 0,
+                        Gas = 15000000,
+
+                    };
+                    var data = Convert.ToHexString(tran.GetCallData()).ToLower();
+                    var signedData = await CybercomVM.SignatureRequest.Handle(new TransactionData()
+                    {
+                        ContractAddress = CybercomVM.ContractAddress ?? throw new InvalidDataException(),
+                        TXData = data
+
+                    }).GetAwaiter();
+                    var str = await CybercomVM.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+                    IsOpen = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                await CybercomVM.Alert.Handle(ex.Message).GetAwaiter();
+            }
+            finally
+            {
+                CybercomVM.IsLoading = false;
+            }
+        }
+    }
     public class CybercomViewModel : ReactiveObject, IDisposable
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
@@ -40,8 +149,9 @@ namespace UN.CYBERCOM.ViewModels
         public Interaction<string, string> SignData { get; } = new Interaction<string, string>();
         public ReactiveCommand<Unit, Unit> Load { get; }
         public ReactiveCommand<Unit, Unit> Deploy { get; }
-        public ReactiveCommand<Unit, Unit> MembershipRequest { get; }
+        public AddMembershipViewModel AddMembershipVM { get; }
         internal Web3 W3 { get; }
+        private bool disposedValue;
         private string? accountNumber;
         public string? AccountNumber
         {
@@ -102,52 +212,31 @@ namespace UN.CYBERCOM.ViewModels
             get => proposalStorageAddress;
             set => this.RaiseAndSetIfChanged(ref proposalStorageAddress, value);
         }
-        private string? selectedCouncilRole;
-        public string? SelectedCouncilRole
-        {
-            get => selectedCouncilRole;
-            set
-            { 
-                this.RaiseAndSetIfChanged(ref selectedCouncilRole, value);
-                this.RaisePropertyChanged(nameof(SelectedCouncil));
-            }
-        }
-        public CouncilViewModel? SelectedCouncil
-        {
-            get => Councils.SingleOrDefault(c => c.Role == selectedCouncilRole);
-        }
-        private string? newNationName;
-        public string? NewNationName
-        {
-            get => newNationName;
-            set => this.RaiseAndSetIfChanged(ref newNationName, value);
-        }
-        private string? newMemberAddress;
-        private bool disposedValue;
-
-        public string? NewMemberAddress
-        {
-            get => newMemberAddress;
-            set => this.RaiseAndSetIfChanged(ref newMemberAddress, value);
-        }
+        
 
         protected ulong SubscriptionId { get; }
         private readonly CompositeDisposable disposable = new CompositeDisposable();
         public ObservableCollection<CouncilViewModel> Councils { get; } = new ObservableCollection<CouncilViewModel>();
-        public ObservableCollection<Contracts.CouncilManager.ContractDefinition.Nation> Nations { get; } = new ObservableCollection<Contracts.CouncilManager.ContractDefinition.Nation>();
+        public ObservableCollection<NationViewModel> Nations { get; } = new ObservableCollection<NationViewModel>();
         public ObservableCollection<MembershipProposalViewModel> EnteredMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> PendingMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
         public ObservableCollection<MembershipProposalViewModel> RejectedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
+        public ObservableCollection<MembershipRemovalProposalViewModel> EnteredMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
+        public ObservableCollection<MembershipRemovalProposalViewModel> PendingMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
+        public ObservableCollection<MembershipRemovalProposalViewModel> ReadyMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
+        public ObservableCollection<MembershipRemovalProposalViewModel> ApprovedMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
+        public ObservableCollection<MembershipRemovalProposalViewModel> RejectedMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
         protected string? OldContractAddress { get; }
         public CybercomViewModel(Web3 w3, IConfiguration config)
         {
             W3 = w3;
+            AddMembershipVM = new AddMembershipViewModel(this);
             IsDeployed = bool.Parse(config["CYBERCOM:IsDeployed"] ?? throw new InvalidDataException());
             Load = ReactiveCommand.CreateFromTask(DoLoad);
             Deploy = ReactiveCommand.CreateFromTask(DoDeploy);
-            MembershipRequest = ReactiveCommand.CreateFromTask(DoMembershipRequest);
+            
             ContractAddress = config["CYBERCOM:Address"];
             OldContractAddress = config["CYBERCOM:OldAddress"];
             SubscriptionId = ulong.Parse(config["VRF:SubscriptionId"] ?? throw new InvalidDataException());
@@ -176,56 +265,7 @@ namespace UN.CYBERCOM.ViewModels
             }).DisposeWith(disposable);
         }
         public const string ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-        protected async Task DoMembershipRequest()
-        {
-            try
-            {
-                if (IsDeployed && CyberService != null && 
-                    !string.IsNullOrWhiteSpace(SelectedCouncilRole) && 
-                    !string.IsNullOrWhiteSpace(SelectedCouncil?.SelectedGroupId) &&
-                    !string.IsNullOrWhiteSpace(NewMemberAddress) &&
-                    !string.IsNullOrWhiteSpace(NewNationName))
-                {
-                    IsLoading = true;
-                    var tran = new SubmitMembershipProposalFunction()
-                    {
-                        FromAddress = AccountNumber,
-                        Request = new MembershipProposalRequest()
-                        {
-                            Member = NewMemberAddress,
-                            NewNation = new Contracts.CybercomDAO.ContractDefinition.Nation()
-                            {
-                                Name = NewNationName,
-                                Id = NewMemberAddress
-                            },
-                            GroupId = BigInteger.Parse(SelectedCouncil.SelectedGroupId),
-                            Duration = BigInteger.Zero,
-                            Owner = ZERO_ADDRESS
-                        },
-                        AmountToSend = 0,
-                        Gas = 15000000,
-                        
-                    };
-                    var data = Convert.ToHexString(tran.GetCallData()).ToLower();
-                    var signedData = await SignatureRequest.Handle(new TransactionData()
-                    {
-                        ContractAddress = ContractAddress ?? throw new InvalidDataException(),
-                        TXData = data
-
-                    }).GetAwaiter();
-                    var str = await W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
-                    //await CyberService.SubmitMembershipProposalRequestAndWaitForReceiptAsync(new SubmitMembershipProposalFunction().DecodeInput(signedData));
-                }
-            }
-            catch(Exception ex)
-            {
-                await Alert.Handle(ex.Message).GetAwaiter();
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
+        
         protected async Task DoDeploy()
         {
             try
@@ -298,6 +338,8 @@ namespace UN.CYBERCOM.ViewModels
         {
             try
             {
+                if (IsLoading)
+                    return;
                 IsLoading = true;
                 if (!IsDeployed)
                     return;
@@ -314,7 +356,7 @@ namespace UN.CYBERCOM.ViewModels
                         FromAddress = AccountNumber
                     });
                     Nations.Clear();
-                    Nations.AddRange(councilDto.ReturnValue1.SelectMany(c => c.Groups.SelectMany(g => g.Members)));
+                    Nations.AddRange(councilDto.ReturnValue1.SelectMany(c => c.Groups.SelectMany(g => g.Members.Select(m => new NationViewModel(m, c, g, this)))));
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
                     var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
                     EnteredMembershipProposals.Clear();
@@ -365,15 +407,68 @@ namespace UN.CYBERCOM.ViewModels
                     ApprovedMembershipProposals.AddRange(approvedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
                     foreach (var pmp in ApprovedMembershipProposals)
                         await pmp.Load.Execute().GetAwaiter();
-
+                    EnteredMembershipRemovalProposals.Clear();
+                    var memberRemovalManager = new MembershipRemovalManagerService(W3, MembershipRemovalAddress);
+                    var memberRemovalEnterDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+                    {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
+                        FromAddress = AccountNumber
+                    });
+                    EnteredMembershipRemovalProposals.Clear();
+                    EnteredMembershipRemovalProposals.AddRange(memberRemovalEnterDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
+                    foreach (var pmp in EnteredMembershipRemovalProposals)
+                        await pmp.Load.Execute().GetAwaiter();
+                    var memberRemovalPendingDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+                    {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
+                        FromAddress = AccountNumber
+                    });
+                    PendingMembershipRemovalProposals.Clear();
+                    PendingMembershipRemovalProposals.AddRange(memberRemovalPendingDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
+                    foreach (var pmp in PendingMembershipRemovalProposals)
+                        await pmp.Load.Execute().GetAwaiter();
+                    var memberRemovalReadyDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+                    {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                        FromAddress = AccountNumber
+                    });
+                    ReadyMembershipRemovalProposals.Clear();
+                    ReadyMembershipRemovalProposals.AddRange(memberRemovalReadyDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
+                    foreach (var pmp in ReadyMembershipRemovalProposals)
+                        await pmp.Load.Execute().GetAwaiter();
+                    var memberRemovalRejectedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+                    {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                        FromAddress = AccountNumber
+                    });
+                    RejectedMembershipRemovalProposals.Clear();
+                    RejectedMembershipRemovalProposals.AddRange(memberRemovalRejectedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
+                    foreach (var pmp in RejectedMembershipRemovalProposals)
+                        await pmp.Load.Execute().GetAwaiter();
+                    var memberRemovalAcceptedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+                    {
+                        Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
+                        FromAddress = AccountNumber
+                    });
+                    ApprovedMembershipRemovalProposals.Clear();
+                    ApprovedMembershipRemovalProposals.AddRange(memberRemovalAcceptedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
+                    foreach (var pmp in ApprovedMembershipRemovalProposals)
+                        await pmp.Load.Execute().GetAwaiter();
                 }
                 else
                 {
                     Councils.Clear();
                     Nations.Clear();
+                    EnteredMembershipProposals.Clear();
+                    EnteredMembershipRemovalProposals.Clear();
                     PendingMembershipProposals.Clear();
+                    PendingMembershipRemovalProposals.Clear();
                     ReadyMembershipProposals.Clear();
+                    ReadyMembershipRemovalProposals.Clear();
                     RejectedMembershipProposals.Clear();
+                    RejectedMembershipRemovalProposals.Clear();
+                    ApprovedMembershipRemovalProposals.Clear();
+                    ApprovedMembershipProposals.Clear();
                 }
             }
             catch (Exception ex)
@@ -428,7 +523,7 @@ namespace UN.CYBERCOM.ViewModels
             Root = root;
             Data = vote;
             Proposal = proposal;
-            Nation = root.Nations.Single(n => n.Id == vote.Member);
+            Nation = root.Nations.Single(n => n.Id == vote.Member).Data;
         }
     }
     public class AddDocumentViewModel : DocumentViewModel
@@ -719,6 +814,61 @@ namespace UN.CYBERCOM.ViewModels
             GC.SuppressFinalize(this);
         }
     }
+    public class NationViewModel : ReactiveObject
+    {
+        internal Contracts.CouncilManager.ContractDefinition.Nation Data { get; }
+        protected CybercomViewModel Root { get; }
+        public string Id
+        {
+            get => Data.Id;
+        }
+        public string Name
+        {
+            get => Data.Name;
+        }
+        public Contracts.CouncilManager.ContractDefinition.Council Council { get; }
+        public Contracts.CouncilManager.ContractDefinition.CouncilGroup CouncilGroup { get; }
+        public ReactiveCommand<Unit, Unit> Remove { get; }
+        public NationViewModel(Contracts.CouncilManager.ContractDefinition.Nation data, Contracts.CouncilManager.ContractDefinition.Council council, Contracts.CouncilManager.ContractDefinition.CouncilGroup councilGroup, CybercomViewModel root)
+        {
+            Council = council;
+            CouncilGroup = councilGroup;
+            Data = data;
+            Root = root;
+            Remove = ReactiveCommand.CreateFromTask(DoRemove);
+        }
+        protected async Task DoRemove()
+        {
+            try
+            {
+                var tx = new SubmitMembershipRemovalProposalFunction()
+                {
+                    FromAddress = Root.AccountNumber,
+                    AmountToSend = 0,
+                    Gas = 15000000,
+                    Request = new MembershipRemovalRequest()
+                    {
+                        Duration = BigInteger.Zero,
+                        NationToRemove = Id,
+                        Owner = CybercomViewModel.ZERO_ADDRESS
+                    }
+                    
+                };
+                var data = Convert.ToHexString(tx.GetCallData()).ToLower();
+                var signedData = await Root.SignatureRequest.Handle(new TransactionData()
+                {
+                    ContractAddress = Root.ContractAddress ?? throw new InvalidDataException(),
+                    TXData = data
+
+                }).GetAwaiter();
+                var str = await Root.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+            }
+            catch(Exception ex)
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+        }
+    }
     public abstract class ProposalViewModel : ReactiveObject
     {
         public ObservableCollection<VoteViewModel> Votes { get; } = new ObservableCollection<VoteViewModel>();
@@ -929,6 +1079,36 @@ namespace UN.CYBERCOM.ViewModels
                 await Alert.Handle(ex.Message).GetAwaiter();
             }
         }
+    }
+    public class MembershipRemovalProposalViewModel : ProposalViewModel
+    {
+
+
+        protected Contracts.MembershipRemovalManager.ContractDefinition.MembershipRemovalResponse Data { get; }
+
+        public Contracts.MembershipRemovalManager.ContractDefinition.Nation NationToRemove
+        {
+            get => Data.NationToRemove;
+        }
+
+        public override string Id => Data.Id.ToString();
+
+        public override DateTime Duration => Data.Duration.FromUnixTimestamp();
+
+        public override ApprovalStatus Status => (ApprovalStatus)Data.Status;
+
+        public override bool IsProcessing => Data.IsProcessing;
+
+        public override string Owner => Data.Owner.ToLower();
+
+        public override string ProposalAddress => Data.ProposalAddress;
+
+        public MembershipRemovalProposalViewModel(CybercomViewModel vm, Contracts.MembershipRemovalManager.ContractDefinition.MembershipRemovalResponse data) : base(vm)
+        {
+            Data = data;
+
+        }
+
     }
     public class MembershipProposalViewModel : ProposalViewModel
     {
