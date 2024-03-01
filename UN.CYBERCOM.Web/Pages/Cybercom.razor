@@ -32,7 +32,10 @@
             <TelerikGrid Data="ViewModel.Nations">
                 <GridColumns>
                     <GridColumn Field="@nameof(NationViewModel.Id)" Title="Address" />
+                    <GridColumn Field="Council.Name" Title="Council" />
+                    <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                     <GridColumn Field="@nameof(NationViewModel.Name)" Title="Name" />
+                    
                     <GridColumn Title="Actions">
                         <Template>
                             <button class="btn btn-primary" @onclick="((NationViewModel)context).Remove.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-trash-xmark"></i></button>
@@ -46,6 +49,8 @@
                     <TelerikGrid Data="ViewModel.EnteredMembershipProposals">
                         <GridColumns>
                             <GridColumn Field="Id" Title="Id" />
+                            <GridColumn Field="Council.Name" Title="Council" />
+                            <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                             <GridColumn Field="NewNation.Id" Title="Nation Address" />
                             <GridColumn Field="NewNation.Name" Title="Nation Name" />
                             <GridColumn>
@@ -77,6 +82,8 @@
                     <TelerikGrid Data="ViewModel.PendingMembershipProposals">
                         <GridColumns>
                             <GridColumn Field="Id" Title="Id" />
+                            <GridColumn Field="Council.Name" Title="Council" />
+                            <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                             <GridColumn Field="NewNation.Id" Title="Nation Address" />
                             <GridColumn Field="NewNation.Name" Title="Nation Name" />
                             <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -107,6 +114,8 @@
                     <TelerikGrid Data="ViewModel.ReadyMembershipProposals">
                         <GridColumns>
                             <GridColumn Field="Id" Title="Id" />
+                            <GridColumn Field="Council.Name" Title="Council" />
+                            <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                             <GridColumn Field="NewNation.Id" Title="Nation Address" />
                             <GridColumn Field="NewNation.Name" Title="Nation Name" />
                             <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -137,6 +146,8 @@
                     <TelerikGrid Data="ViewModel.RejectedMembershipProposals">
                         <GridColumns>
                             <GridColumn Field="Id" Title="Id" />
+                            <GridColumn Field="Council.Name" Title="Council" />
+                            <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                             <GridColumn Field="NewNation.Id" Title="Nation Address" />
                             <GridColumn Field="NewNation.Name" Title="Nation Name" />
                             <GridColumn Field="Duration" Title="Voting Experation Date" />
@@ -165,6 +176,8 @@
                             <GridColumn Field="Id" Title="Id" />
                             <GridColumn Field="NewNation.Id" Title="Nation Address" />
                             <GridColumn Field="NewNation.Name" Title="Nation Name" />
+                            <GridColumn Field="Council.Name" Title="Council" />
+                            <GridColumn Field="CouncilGroup.Name" Title="Council Group" />
                             <GridColumn Field="Duration" Title="Voting Experation Date" />
                             <GridColumn>
                                 <Template>
