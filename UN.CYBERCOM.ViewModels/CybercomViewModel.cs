@@ -26,7 +26,6 @@ using UN.CYBERCOM.Contracts.ProposalStorageManager;
 using UN.CYBERCOM.Contracts.Voting;
 using UN.CYBERCOM.Contracts.MembershipRemovalManager;
 using System.Windows.Input;
-using Org.BouncyCastle.Asn1.Crmf;
 
 namespace UN.CYBERCOM.ViewModels
 {
@@ -142,6 +141,87 @@ namespace UN.CYBERCOM.ViewModels
             }
         }
     }
+    public class AddChangeVotingParametersRequestViewModel : ReactiveObject
+    {
+        private bool isOpen;
+        public bool IsOpen
+        {
+            get => isOpen;
+            set => this.RaiseAndSetIfChanged(ref isOpen, value);
+        }
+        public ReactiveCommand<Unit, Unit> CreateRequest { get; }
+        public ReactiveCommand<Unit, Unit> Load { get; }
+        public ObservableCollection<VotingParametersViewModel> Parameters { get; } = new ObservableCollection<VotingParametersViewModel>();
+        protected CybercomViewModel Root { get; }
+        public AddChangeVotingParametersRequestViewModel(CybercomViewModel root)
+        {
+            Root = root;
+            CreateRequest = ReactiveCommand.CreateFromTask(DoCreateRequest);
+            Load = ReactiveCommand.Create(DoLoad);
+            Open = ReactiveCommand.Create(DoOpen);
+        }
+        public ICommand Open { get; }
+        protected void DoOpen()
+        {
+            IsOpen = true;
+        }
+        protected void DoLoad()
+        {
+            Parameters.Clear();
+            Parameters.AddRange(Root.Councils.Select(c => new VotingParametersViewModel(Root, c.Data)));
+        }
+        protected async Task DoCreateRequest()
+        {
+            try
+            {
+                Root.IsLoading = true;
+                var tran = new SubmitChangeVotingParametersFunction()
+                {
+                    FromAddress = Root.AccountNumber,
+                    Request = new ChangeVotingParametersRequest()
+                    {
+                        Duration = BigInteger.Zero,
+                        Owner = CybercomViewModel.ZERO_ADDRESS,
+                        Parameters = Parameters.Select(c => new ChangeVotingParametersRole()
+                        {
+                            Council = c.Council?.RoleBytes ?? throw new InvalidDataException(),
+                            Parameters = new Contracts.CybercomDAO.ContractDefinition.VotingParameters()
+                            {
+                                AvgVotes = c.AvgVotes,
+                                OutputCountForGroup = c.OutputCountForGroup,
+                                OutputCountForMember = c.OutputCountForMember,
+                                RandomizeByGroup = c.RandomizeByGroup,
+                                RandomizeByMember = c.RandomizeByMember,
+                                SumDenominator = (BigInteger)c.SumDenominator,
+                                SumNumerator = (BigInteger)c.SumNumerator,
+                                VoteDenominator = (BigInteger)c.VoteDenominator,
+                                VoteNumerator = (BigInteger)c.VoteNumerator
+                            }
+                        }).ToList()
+                    },
+                    AmountToSend = 0,
+                    Gas = 15000000
+                };
+                var data = Convert.ToHexString(tran.GetCallData()).ToLower();
+                var signedData = await Root.SignatureRequest.Handle(new TransactionData()
+                {
+                    ContractAddress = Root.ContractAddress ?? throw new InvalidDataException(),
+                    TXData = data
+
+                }).GetAwaiter();
+                var str = await Root.W3.Eth.Transactions.SendRawTransaction.SendRequestAsync(signedData);
+                IsOpen = false;
+            }
+            catch(Exception ex)
+            {
+                await Root.Alert.Handle(ex.Message).GetAwaiter();
+            }
+            finally
+            {
+                Root.IsLoading = false;
+            }
+        }
+    }
     public class CybercomViewModel : ReactiveObject, IDisposable
     {
         public Interaction<string, bool> Alert { get; } = new Interaction<string, bool>();
@@ -149,6 +229,7 @@ namespace UN.CYBERCOM.ViewModels
         public Interaction<string, string> SignData { get; } = new Interaction<string, string>();
         public ReactiveCommand<Unit, Unit> Load { get; }
         public ReactiveCommand<Unit, Unit> Deploy { get; }
+        public ObservableCollection<VotingParametersViewModel> VotingParameters { get; } = new ObservableCollection<VotingParametersViewModel>();
         public AddMembershipViewModel AddMembershipVM { get; }
         internal Web3 W3 { get; }
         private bool disposedValue;
@@ -212,27 +293,30 @@ namespace UN.CYBERCOM.ViewModels
             get => proposalStorageAddress;
             set => this.RaiseAndSetIfChanged(ref proposalStorageAddress, value);
         }
-        
+        private string? votingParametersManagerAddress;
+        public string? VotingParametersManagerAddress
+        {
+            get => votingParametersManagerAddress;
+            set => this.RaiseAndSetIfChanged(ref votingParametersManagerAddress, value);
+        }
 
         protected ulong SubscriptionId { get; }
         private readonly CompositeDisposable disposable = new CompositeDisposable();
         public ObservableCollection<CouncilViewModel> Councils { get; } = new ObservableCollection<CouncilViewModel>();
         public ObservableCollection<NationViewModel> Nations { get; } = new ObservableCollection<NationViewModel>();
-        public ObservableCollection<MembershipProposalViewModel> EnteredMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-        public ObservableCollection<MembershipProposalViewModel> PendingMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-        public ObservableCollection<MembershipProposalViewModel> ReadyMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-        public ObservableCollection<MembershipProposalViewModel> ApprovedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-        public ObservableCollection<MembershipProposalViewModel> RejectedMembershipProposals { get; } = new ObservableCollection<MembershipProposalViewModel>();
-        public ObservableCollection<MembershipRemovalProposalViewModel> EnteredMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
-        public ObservableCollection<MembershipRemovalProposalViewModel> PendingMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
-        public ObservableCollection<MembershipRemovalProposalViewModel> ReadyMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
-        public ObservableCollection<MembershipRemovalProposalViewModel> ApprovedMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
-        public ObservableCollection<MembershipRemovalProposalViewModel> RejectedMembershipRemovalProposals { get; } = new ObservableCollection<MembershipRemovalProposalViewModel>();
+        public MembershipProposalsViewModel MembershipProposalsVM { get; }
+        public MembershipRemovalProposalsViewModel MembershipRemovalProposalsVM { get; }
+        public ChangeVotingParametersProposalsViewModel ChangeParametersVM { get; }
+        public AddChangeVotingParametersRequestViewModel AddChangeParametersVM { get; }
         protected string? OldContractAddress { get; }
         public CybercomViewModel(Web3 w3, IConfiguration config)
         {
             W3 = w3;
+            AddChangeParametersVM = new AddChangeVotingParametersRequestViewModel(this);
             AddMembershipVM = new AddMembershipViewModel(this);
+            MembershipProposalsVM = new MembershipProposalsViewModel(this);
+            MembershipRemovalProposalsVM = new MembershipRemovalProposalsViewModel(this);
+            ChangeParametersVM = new ChangeVotingParametersProposalsViewModel(this);
             IsDeployed = bool.Parse(config["CYBERCOM:IsDeployed"] ?? throw new InvalidDataException());
             Load = ReactiveCommand.CreateFromTask(DoLoad);
             Deploy = ReactiveCommand.CreateFromTask(DoDeploy);
@@ -311,6 +395,14 @@ namespace UN.CYBERCOM.ViewModels
                         DaoAddress = ContractAddress
                     });
                     MembershipAddress = rcpt6.ContractAddress;
+                    var rcpt7 = await Contracts.VotingParametersManager.VotingParametersManagerService.DeployContractAndWaitForReceiptAsync(W3, new Contracts.VotingParametersManager.ContractDefinition.VotingParametersManagerDeployment()
+                    {
+                        VotingAddress = VotingAddress,
+                        CouncilManagementAddress = CouncilManagerAddress,
+                        ProposalStorageAddress = ProposalStorageAddress,
+                        DaoAddress = ContractAddress
+                    });
+                    VotingParametersManagerAddress = rcpt7.ContractAddress;
                     var service = new CybercomDAOService(W3, ContractAddress);
                     await service.InitializeRequestAndWaitForReceiptAsync(new ContractAddresses()
                     {
@@ -319,7 +411,8 @@ namespace UN.CYBERCOM.ViewModels
                         CouncilManagementAddress = CouncilManagerAddress,
                         ProposalStorageAddress = ProposalStorageAddress,
                         MembershipManagerAddress = MembershipAddress,
-                        MembershipRemovalAddress = MembershipRemovalAddress
+                        MembershipRemovalAddress = MembershipRemovalAddress,
+                        VotingParametersManagerAddress = VotingParametersManagerAddress
                     });
                     await service.CloseInitializationRequestAndWaitForReceiptAsync();
                     IsDeployed = true;
@@ -333,6 +426,12 @@ namespace UN.CYBERCOM.ViewModels
             {
                 IsLoading = false;
             }
+        }
+        private Dictionary<string, Contracts.CouncilManager.ContractDefinition.Council>? councilDic;
+        public Dictionary<string, Contracts.CouncilManager.ContractDefinition.Council>? CouncilDic
+        {
+            get => councilDic;
+            set => this.RaiseAndSetIfChanged(ref councilDic, value);
         }
         protected async Task DoLoad()
         {
@@ -350,7 +449,9 @@ namespace UN.CYBERCOM.ViewModels
                     CouncilManagerAddress = contracts.CouncilManagementAddress;
                     MembershipAddress = contracts.MembershipManagerAddress;
                     MembershipRemovalAddress = contracts.MembershipRemovalAddress;
+                    VotingParametersManagerAddress = contracts.VotingParametersManagerAddress;
                     Councils.Clear();
+                    VotingParameters.Clear();
                     var councilDto = await new CouncilManagerService(W3, CouncilManagerAddress).GetCouncilsQueryAsync(new Contracts.CouncilManager.ContractDefinition.GetCouncilsFunction()
                     {
                         FromAddress = AccountNumber
@@ -358,117 +459,22 @@ namespace UN.CYBERCOM.ViewModels
                     Nations.Clear();
                     Nations.AddRange(councilDto.ReturnValue1.SelectMany(c => c.Groups.SelectMany(g => g.Members.Select(m => new NationViewModel(m, c, g, this)))));
                     Councils.AddRange(councilDto.ReturnValue1.Select(g => new CouncilViewModel(g)).ToArray());
-                    var dicCouncils = Councils.ToDictionary(g => g.Role, g => g.Data);
-                    EnteredMembershipProposals.Clear();
-                    var memberManager = new UN.CYBERCOM.Contracts.MembershipManager.MembershipManagerService(W3, MembershipAddress);
+                    VotingParameters.AddRange(Councils.Select(c => new VotingParametersViewModel(this, c.Data)));
+                    
+                    CouncilDic = Councils.ToDictionary(g => g.Role, g => g.Data);
+                    await AddChangeParametersVM.Load.Execute().GetAwaiter();
+                    await MembershipProposalsVM.Load.Execute().GetAwaiter();
+                    await MembershipRemovalProposalsVM.Load.Execute().GetAwaiter();
+                    await ChangeParametersVM.Load.Execute().GetAwaiter();
 
-                    var enteredDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
-                        FromAddress = AccountNumber
-                    });
-                    EnteredMembershipProposals.AddRange(enteredDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
-                    foreach (var pmp in EnteredMembershipProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    PendingMembershipProposals.Clear();
-                    var pendingDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
-                        FromAddress = AccountNumber
-                    });
-
-                    PendingMembershipProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
-                    foreach (var pmp in PendingMembershipProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var readyDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
-                        FromAddress = AccountNumber
-                    });
-                    ReadyMembershipProposals.Clear();
-                    ReadyMembershipProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
-                    foreach (var pmp in ReadyMembershipProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var rejectedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Rejected,
-                        FromAddress = AccountNumber
-                    });
-                    RejectedMembershipProposals.Clear();
-                    RejectedMembershipProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
-                    foreach (var pmp in RejectedMembershipProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var approvedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
-                        FromAddress = AccountNumber
-                    });
-                    ApprovedMembershipProposals.Clear();
-                    ApprovedMembershipProposals.AddRange(approvedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(this, g, dicCouncils[Convert.ToBase64String(g.Council)])));
-                    foreach (var pmp in ApprovedMembershipProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    EnteredMembershipRemovalProposals.Clear();
-                    var memberRemovalManager = new MembershipRemovalManagerService(W3, MembershipRemovalAddress);
-                    var memberRemovalEnterDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
-                        FromAddress = AccountNumber
-                    });
-                    EnteredMembershipRemovalProposals.Clear();
-                    EnteredMembershipRemovalProposals.AddRange(memberRemovalEnterDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
-                    foreach (var pmp in EnteredMembershipRemovalProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var memberRemovalPendingDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
-                        FromAddress = AccountNumber
-                    });
-                    PendingMembershipRemovalProposals.Clear();
-                    PendingMembershipRemovalProposals.AddRange(memberRemovalPendingDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
-                    foreach (var pmp in PendingMembershipRemovalProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var memberRemovalReadyDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
-                        FromAddress = AccountNumber
-                    });
-                    ReadyMembershipRemovalProposals.Clear();
-                    ReadyMembershipRemovalProposals.AddRange(memberRemovalReadyDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
-                    foreach (var pmp in ReadyMembershipRemovalProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var memberRemovalRejectedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
-                        FromAddress = AccountNumber
-                    });
-                    RejectedMembershipRemovalProposals.Clear();
-                    RejectedMembershipRemovalProposals.AddRange(memberRemovalRejectedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
-                    foreach (var pmp in RejectedMembershipRemovalProposals)
-                        await pmp.Load.Execute().GetAwaiter();
-                    var memberRemovalAcceptedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
-                    {
-                        Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
-                        FromAddress = AccountNumber
-                    });
-                    ApprovedMembershipRemovalProposals.Clear();
-                    ApprovedMembershipRemovalProposals.AddRange(memberRemovalAcceptedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(this, g)));
-                    foreach (var pmp in ApprovedMembershipRemovalProposals)
-                        await pmp.Load.Execute().GetAwaiter();
                 }
                 else
                 {
                     Councils.Clear();
                     Nations.Clear();
-                    EnteredMembershipProposals.Clear();
-                    EnteredMembershipRemovalProposals.Clear();
-                    PendingMembershipProposals.Clear();
-                    PendingMembershipRemovalProposals.Clear();
-                    ReadyMembershipProposals.Clear();
-                    ReadyMembershipRemovalProposals.Clear();
-                    RejectedMembershipProposals.Clear();
-                    RejectedMembershipRemovalProposals.Clear();
-                    ApprovedMembershipRemovalProposals.Clear();
-                    ApprovedMembershipProposals.Clear();
+                    VotingParameters.Clear();
+                    MembershipProposalsVM.Clear();
+                    MembershipRemovalProposalsVM.Clear();
                 }
             }
             catch (Exception ex)
@@ -508,6 +514,186 @@ namespace UN.CYBERCOM.ViewModels
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+    }
+    public abstract class ProposalsViewModel<TProposal> : ReactiveObject
+        where TProposal: ProposalViewModel
+    {
+        public ObservableCollection<TProposal> EnteredProposals { get; } = new ObservableCollection<TProposal>();
+        public ObservableCollection<TProposal> PendingProposals { get; } = new ObservableCollection<TProposal>();
+        public ObservableCollection<TProposal> ReadyProposals { get; } = new ObservableCollection<TProposal>();
+        public ObservableCollection<TProposal> ApprovedProposals { get; } = new ObservableCollection<TProposal>();
+        public ObservableCollection<TProposal> RejectedProposals { get; } = new ObservableCollection<TProposal>();
+        protected CybercomViewModel CybercomVM { get; }
+        public ReactiveCommand<Unit, Unit> Load { get; }
+        public ProposalsViewModel(CybercomViewModel vm)
+        {
+            CybercomVM = vm;
+            Load = ReactiveCommand.CreateFromTask(DoLoad);
+        }
+        protected abstract Task DoLoad();
+        public void Clear()
+        {
+            EnteredProposals.Clear();
+            PendingProposals.Clear();
+            ReadyProposals.Clear();
+            ApprovedProposals.Clear();
+            ReadyProposals.Clear();
+        }
+    }
+    public class ChangeVotingParametersProposalsViewModel : ProposalsViewModel<ChangeVotingParametersProposalViewModel>
+    {
+        public ChangeVotingParametersProposalsViewModel(CybercomViewModel vm) : base(vm) { }
+        protected override async Task DoLoad()
+        {
+            Clear();
+            var changeManager = new UN.CYBERCOM.Contracts.VotingParametersManager.VotingParametersManagerService(CybercomVM.W3, CybercomVM.VotingParametersManagerAddress ?? throw new InvalidDataException());
+            var enteredDTO = await changeManager.GetRequestsQueryAsync(new Contracts.VotingParametersManager.ContractDefinition.GetRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            
+            EnteredProposals.AddRange(enteredDTO.ReturnValue1.Select(g => new ChangeVotingParametersProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in EnteredProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var pendingDTO = await changeManager.GetRequestsQueryAsync(new Contracts.VotingParametersManager.ContractDefinition.GetRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            PendingProposals.AddRange(pendingDTO.ReturnValue1.Select(g => new ChangeVotingParametersProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in PendingProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var readyDTO = await changeManager.GetRequestsQueryAsync(new Contracts.VotingParametersManager.ContractDefinition.GetRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ReadyProposals.AddRange(readyDTO.ReturnValue1.Select(g => new ChangeVotingParametersProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in ReadyProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var rejectedDTO = await changeManager.GetRequestsQueryAsync(new Contracts.VotingParametersManager.ContractDefinition.GetRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Rejected,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            RejectedProposals.AddRange(rejectedDTO.ReturnValue1.Select(g => new ChangeVotingParametersProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in RejectedProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var approvedDTO = await changeManager.GetRequestsQueryAsync(new Contracts.VotingParametersManager.ContractDefinition.GetRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ApprovedProposals.AddRange(approvedDTO.ReturnValue1.Select(g => new ChangeVotingParametersProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in ApprovedProposals)
+                await pmp.Load.Execute().GetAwaiter();
+        }
+    }
+    public class MembershipProposalsViewModel : ProposalsViewModel<MembershipProposalViewModel>
+    {
+        public MembershipProposalsViewModel(CybercomViewModel vm) : base(vm)
+        {
+            
+        }
+        protected override async Task DoLoad()
+        {
+            Clear();
+            var memberManager = new UN.CYBERCOM.Contracts.MembershipManager.MembershipManagerService(CybercomVM.W3, CybercomVM.MembershipAddress ?? throw new InvalidDataException());
+
+            var enteredDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            EnteredProposals.AddRange(enteredDto.ReturnValue1.Select(g => new MembershipProposalViewModel(CybercomVM, g, CybercomVM?.CouncilDic?[g.Council.ToHex(true)] ?? throw new InvalidDataException())));
+            foreach (var pmp in EnteredProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var pendingDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            PendingProposals.AddRange(pendingDto.ReturnValue1.Select(g => new MembershipProposalViewModel(CybercomVM, g, CybercomVM?.CouncilDic?[g.Council.ToHex(true)] ?? throw new InvalidDataException())));
+            foreach (var pmp in PendingProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var readyDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ReadyProposals.AddRange(readyDto.ReturnValue1.Select(g => new MembershipProposalViewModel(CybercomVM, g, CybercomVM?.CouncilDic?[g.Council.ToHex(true)] ?? throw new InvalidDataException())));
+            foreach (var pmp in ReadyProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var rejectedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Rejected,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            RejectedProposals.AddRange(rejectedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(CybercomVM, g, CybercomVM?.CouncilDic?[g.Council.ToHex(true)] ?? throw new InvalidDataException())));
+            foreach (var pmp in RejectedProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var approvedDto = await memberManager.GetMembershipRequestsQueryAsync(new Contracts.MembershipManager.ContractDefinition.GetMembershipRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ApprovedProposals.AddRange(approvedDto.ReturnValue1.Select(g => new MembershipProposalViewModel(CybercomVM, g, CybercomVM?.CouncilDic?[g.Council.ToHex(true)] ?? throw new InvalidDataException())));
+            foreach (var pmp in ApprovedProposals)
+                await pmp.Load.Execute().GetAwaiter();
+        }
+    }
+    public class MembershipRemovalProposalsViewModel : ProposalsViewModel<MembershipRemovalProposalViewModel>
+    {
+        public MembershipRemovalProposalsViewModel(CybercomViewModel vm) : base(vm)
+        {
+
+        }
+        protected override async Task DoLoad()
+        {
+            Clear();
+            var memberRemovalManager = new MembershipRemovalManagerService(CybercomVM.W3, CybercomVM.MembershipRemovalAddress ?? throw new InvalidDataException());
+            var memberRemovalEnterDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Entered,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            EnteredProposals.AddRange(memberRemovalEnterDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in EnteredProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var memberRemovalPendingDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Pending,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            PendingProposals.AddRange(memberRemovalPendingDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in PendingProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var memberRemovalReadyDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ReadyProposals.AddRange(memberRemovalReadyDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in ReadyProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var memberRemovalRejectedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Ready,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            RejectedProposals.AddRange(memberRemovalRejectedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in RejectedProposals)
+                await pmp.Load.Execute().GetAwaiter();
+            var memberRemovalAcceptedDto = await memberRemovalManager.GetMembershipRemovalRequestsQueryAsync(new Contracts.MembershipRemovalManager.ContractDefinition.GetMembershipRemovalRequestsFunction()
+            {
+                Status = (byte)ProposalViewModel.ApprovalStatus.Approved,
+                FromAddress = CybercomVM.AccountNumber
+            });
+            ApprovedProposals.AddRange(memberRemovalAcceptedDto.ReturnValue1.Select(g => new MembershipRemovalProposalViewModel(CybercomVM, g)));
+            foreach (var pmp in ApprovedProposals)
+                await pmp.Load.Execute().GetAwaiter();
         }
     }
     public class VoteViewModel : ReactiveObject
@@ -1080,6 +1266,131 @@ namespace UN.CYBERCOM.ViewModels
             }
         }
     }
+    public class ChangeVotingParametersProposalViewModel : ProposalViewModel
+    {
+        protected Contracts.VotingParametersManager.ContractDefinition.ChangeVotingParametersResponse Data { get; }
+        public ObservableCollection<VotingParametersViewModel> Parameters { get; } = new ObservableCollection<VotingParametersViewModel>();
+        public override string Id => Data.Id.ToString();
+
+        public override DateTime Duration => Data.Duration.FromUnixTimestamp();
+
+        public override ApprovalStatus Status => (ApprovalStatus)Data.Status;
+
+        public override bool IsProcessing => Data.IsProcessing;
+
+        public override string Owner => Data.Owner.ToLower();
+
+        public override string ProposalAddress => Data.ProposalAddress;
+        
+        public ChangeVotingParametersProposalViewModel(CybercomViewModel vm, Contracts.VotingParametersManager.ContractDefinition.ChangeVotingParametersResponse data)
+            :base(vm)
+        {
+            Data = data;
+            Parameters.AddRange(data.Parameters.Select(g => new VotingParametersViewModel(Parent, g)));
+        }
+    }
+    public class VotingParametersViewModel : ReactiveObject
+    {
+        public CouncilViewModel? Council
+        {
+            get => Root.Councils.SingleOrDefault(g => g.Role == CouncilRole);
+        }
+        private string councilRole = null!;
+        public string CouncilRole
+        {
+            get => councilRole;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref councilRole, value);
+                this.RaisePropertyChanged(nameof(Council));
+            }
+        }
+        private bool randomizeByGroup;
+        public bool RandomizeByGroup
+        {
+            get => randomizeByGroup;
+            set => this.RaiseAndSetIfChanged(ref randomizeByGroup, value);
+        }
+        private bool randomizeByMember;
+        public bool RandomizeByMember
+        {
+            get => randomizeByMember;
+            set => this.RaiseAndSetIfChanged(ref randomizeByMember, value);
+        }
+        private uint outputCountForGroup;
+        public uint OutputCountForGroup
+        {
+            get => outputCountForGroup;
+            set => this.RaiseAndSetIfChanged(ref outputCountForGroup, value);
+        }
+        private uint outputCountForMember;
+        public uint OutputCountForMember
+        {
+            get => outputCountForMember;
+            set => this.RaiseAndSetIfChanged(ref outputCountForMember, value);
+        }
+        private long voteDenominator;
+        public long VoteDenominator
+        {
+            get => voteDenominator;
+            set => this.RaiseAndSetIfChanged(ref voteDenominator, value);
+        }
+        private long voteNumerator;
+        public long VoteNumerator
+        {
+            get => voteNumerator;
+            set => this.RaiseAndSetIfChanged(ref voteNumerator, value);
+        }
+        private long sumDenominator;
+        public long SumDenominator
+        {
+            get => sumDenominator;
+            set => this.RaiseAndSetIfChanged(ref sumDenominator, value);
+        }
+        private long sumNumerator;
+        public long SumNumerator
+        {
+            get => sumNumerator;
+            set => this.RaiseAndSetIfChanged(ref sumNumerator, value);
+        }
+        private bool avgVotes;
+        public bool AvgVotes
+        {
+            get => avgVotes;
+            set => this.RaiseAndSetIfChanged(ref avgVotes, value);
+        }
+        protected CybercomViewModel Root { get; }
+        protected VotingParametersViewModel(CybercomViewModel root)
+        {
+            Root = root;
+        }
+        public VotingParametersViewModel(CybercomViewModel root, Contracts.CouncilManager.ContractDefinition.Council council) :this(root)
+        {
+            CouncilRole = council.Role.ToHex(true);
+            AvgVotes = council.VotingParameters.AvgVotes;
+            SumDenominator = long.Parse(council.VotingParameters.SumDenominator.ToString());
+            SumNumerator = long.Parse(council.VotingParameters.SumNumerator.ToString());
+            VoteNumerator = long.Parse(council.VotingParameters.VoteNumerator.ToString());
+            VoteDenominator = long.Parse(council.VotingParameters.VoteDenominator.ToString());
+            OutputCountForGroup = council.VotingParameters.OutputCountForGroup;
+            OutputCountForMember = council.VotingParameters.OutputCountForMember;
+            RandomizeByGroup = council.VotingParameters.RandomizeByGroup;
+            RandomizeByMember = council.VotingParameters.RandomizeByMember;
+        }
+        public VotingParametersViewModel(CybercomViewModel root, Contracts.VotingParametersManager.ContractDefinition.ChangeVotingParametersRole role) : this(root)
+        {
+            CouncilRole = role.Council.ToHex(true);
+            AvgVotes = role.Parameters.AvgVotes;
+            SumDenominator = long.Parse(role.Parameters.SumDenominator.ToString());
+            SumNumerator = long.Parse(role.Parameters.SumNumerator.ToString());
+            VoteNumerator = long.Parse(role.Parameters.VoteNumerator.ToString());
+            VoteDenominator = long.Parse(role.Parameters.VoteDenominator.ToString());
+            OutputCountForGroup = role.Parameters.OutputCountForGroup;
+            OutputCountForMember = role.Parameters.OutputCountForMember;
+            RandomizeByGroup = role.Parameters.RandomizeByGroup;
+            RandomizeByMember = role.Parameters.RandomizeByMember;
+        }
+    }
     public class MembershipRemovalProposalViewModel : ProposalViewModel
     {
 
@@ -1165,7 +1476,7 @@ namespace UN.CYBERCOM.ViewModels
         }
         public string Role
         {
-            get => Convert.ToBase64String(Data.Role);
+            get => Data.Role.ToHex(true);
         }
         public ObservableCollection<CouncilGroupViewModel> Groups { get; }
         private string? selectedGrouplId;

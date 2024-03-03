@@ -23,5 +23,7 @@ namespace UN.CYBERCOM.Contracts.MembershipProposal.ContractDefinition
         public virtual string MembershipRemovalAddress { get; set; }
         [Parameter("address", "membershipManagerAddress", 6)]
         public virtual string MembershipManagerAddress { get; set; }
+        [Parameter("address", "votingParametersManagerAddress", 7)]
+        public virtual string VotingParametersManagerAddress { get; set; }
     }
 }

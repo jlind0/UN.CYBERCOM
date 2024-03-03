@@ -48,6 +48,32 @@ namespace UN.CYBERCOM.Contracts.ProposalStorageManager
             ContractHandler = web3.Eth.GetContractHandler(contractAddress);
         }
 
+        public Task<string> AddChangeParametersProposalRequestAsync(AddChangeParametersProposalFunction addChangeParametersProposalFunction)
+        {
+             return ContractHandler.SendRequestAsync(addChangeParametersProposalFunction);
+        }
+
+        public Task<TransactionReceipt> AddChangeParametersProposalRequestAndWaitForReceiptAsync(AddChangeParametersProposalFunction addChangeParametersProposalFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addChangeParametersProposalFunction, cancellationToken);
+        }
+
+        public Task<string> AddChangeParametersProposalRequestAsync(string key)
+        {
+            var addChangeParametersProposalFunction = new AddChangeParametersProposalFunction();
+                addChangeParametersProposalFunction.Key = key;
+            
+             return ContractHandler.SendRequestAsync(addChangeParametersProposalFunction);
+        }
+
+        public Task<TransactionReceipt> AddChangeParametersProposalRequestAndWaitForReceiptAsync(string key, CancellationTokenSource cancellationToken = null)
+        {
+            var addChangeParametersProposalFunction = new AddChangeParametersProposalFunction();
+                addChangeParametersProposalFunction.Key = key;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addChangeParametersProposalFunction, cancellationToken);
+        }
+
         public Task<string> AddMembershipProposalRequestAsync(AddMembershipProposalFunction addMembershipProposalFunction)
         {
              return ContractHandler.SendRequestAsync(addMembershipProposalFunction);
@@ -98,6 +124,17 @@ namespace UN.CYBERCOM.Contracts.ProposalStorageManager
                 addMembershipRemovalProposalFunction.Key = key;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(addMembershipRemovalProposalFunction, cancellationToken);
+        }
+
+        public Task<List<string>> GetChangeParametersProposalAddressesQueryAsync(GetChangeParametersProposalAddressesFunction getChangeParametersProposalAddressesFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetChangeParametersProposalAddressesFunction, List<string>>(getChangeParametersProposalAddressesFunction, blockParameter);
+        }
+
+        
+        public Task<List<string>> GetChangeParametersProposalAddressesQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetChangeParametersProposalAddressesFunction, List<string>>(null, blockParameter);
         }
 
         public Task<string> GetMembershipProposalQueryAsync(GetMembershipProposalFunction getMembershipProposalFunction, BlockParameter blockParameter = null)

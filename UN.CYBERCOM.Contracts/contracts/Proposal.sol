@@ -223,6 +223,47 @@ contract MembershipRemovalProposal is Proposal{
         );
     }
 }
+contract ChangeVotingParametersProposal is Proposal{
+    MembershipManagement.ChangeVotingParametersRole[] parameters;
+    constructor(
+        address _owner, 
+        MembershipManagement.ContractAddresses memory _contractAddresses,
+        uint _id,
+        uint _duration, 
+        MembershipManagement.ChangeVotingParametersRole[] memory _parameters
+    ) 
+        Proposal(_owner, _contractAddresses , _id, MembershipManagement.ProposalTypes.UpdateVotingParameters, _duration)
+    {
+        uint i = 0;
+        while(i < _parameters.length){
+            parameters.push();
+            parameters[i].council = _parameters[i].council;
+            parameters[i].parameters.randomizeByGroup = _parameters[i].parameters.randomizeByGroup;
+            parameters[i].parameters.randomizeByMember = _parameters[i].parameters.randomizeByMember;
+            parameters[i].parameters.outputCountForGroup = _parameters[i].parameters.outputCountForGroup;
+            parameters[i].parameters.outputCountForMember = _parameters[i].parameters.outputCountForMember;
+            parameters[i].parameters.voteDenominator = _parameters[i].parameters.voteDenominator;
+            parameters[i].parameters.voteNumerator = _parameters[i].parameters.voteNumerator;
+            parameters[i].parameters.sumDenominator = _parameters[i].parameters.sumDenominator;
+            parameters[i].parameters.sumNumerator = _parameters[i].parameters.sumNumerator;
+            parameters[i].parameters.avgVotes = _parameters[i].parameters.avgVotes;
+            i++;
+        }
+    }
+    function getChangeResponse() public view returns(MembershipManagement.ChangeVotingParametersResponse memory) {
+        return MembershipManagement.ChangeVotingParametersResponse(
+            id, 
+            parameters, 
+            getVotes(), 
+            duration, 
+            status, 
+            isProcessing, 
+            votingStarted, 
+            owner, 
+            address(this)
+        );
+    }
+}
 contract ProposalStorageManager{
     address daoAddress;
     mapping(address => address) membershipProposals;
@@ -230,6 +271,7 @@ contract ProposalStorageManager{
     mapping(uint => address) public proposals;
     address[] membershipProposalAddresses;
     address[] membershipRemovalProposalAddresses;
+    address[] changeParametersProposalAddresses;
     uint public proposalCount = 0;
     constructor(address _daoAddress){
         daoAddress = _daoAddress;
@@ -264,6 +306,12 @@ contract ProposalStorageManager{
     }
     function addMembershipRemovalProposal(address key) isFromDAO() public{
         membershipRemovalProposalAddresses.push(key);
+    }
+    function addChangeParametersProposal(address key) isFromDAO() public{
+        changeParametersProposalAddresses.push(key);
+    }
+    function getChangeParametersProposalAddresses() public view returns(address[] memory){
+        return changeParametersProposalAddresses;
     }
     function getMembershipProposalAddresses() public view returns(address[] memory){
         return membershipProposalAddresses;

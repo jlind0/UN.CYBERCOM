@@ -5,7 +5,7 @@ using System.Numerics;
 using Nethereum.Hex.HexTypes;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace UN.CYBERCOM.Contracts.MembershipRemovalProposal.ContractDefinition
+namespace UN.CYBERCOM.Contracts.ChangeVotingParametersProposal.ContractDefinition
 {
     public partial class ContractAddresses : ContractAddressesBase { }
 

@@ -1,0 +1,57 @@
+﻿@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using System.Threading
+@using DynamicData.Binding
+@inherits ReactiveComponentBase<AddChangeVotingParametersRequestViewModel>
+@if (ViewModel != null)
+{
+    <button class="btn btn-primary" @onclick="ViewModel.Open.BindCommand<MouseEventArgs>()"><i class="fa-solid fa-pen"></i><i class="fa-solid fa-ballot-check"></i></button>
+    <TelerikDialog Title="Update Voting Parameters" @bind-Visible="ViewModel.IsOpen" @ref="addDialog">
+        <DialogContent>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Council</th>
+                        <th>Avergage Votes?</th>
+                        <th>Randomize by Group?</th>
+                        <th>Output Count for Group</th>
+                        <th>Randomize by Member?</th>
+                        <th>Output Count for Member</th>
+                        <th>Sum Numerator</th>
+                        <th>Sum Denominator</th>
+                        <th>Vote Numerator</th>
+                        <th>Vote Denominator</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var parm in ViewModel.Parameters)
+                    {
+                        <tr>
+                            <td>@parm.Council?.Name</td>
+                            <td><TelerikCheckBox @bind-Value="parm.AvgVotes"/></td>
+                            <td><TelerikCheckBox @bind-Value="parm.RandomizeByGroup"/></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.OutputCountForGroup"/></td>
+                            <td><TelerikCheckBox @bind-Value="parm.RandomizeByMember"/></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.OutputCountForMember"/></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.SumNumerator" /></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.SumDenominator" /></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.VoteNumerator" /></td>
+                            <td><TelerikNumericTextBox @bind-Value="parm.VoteDenominator" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <TelerikButton OnClick="ViewModel.CreateRequest.BindCommand<MouseEventArgs>()">Submit</TelerikButton>
+        </DialogContent>
+    </TelerikDialog>
+}
+@code {
+    protected TelerikDialog? addDialog;
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+        }
+        base.OnAfterRender(firstRender);
+    }
+}

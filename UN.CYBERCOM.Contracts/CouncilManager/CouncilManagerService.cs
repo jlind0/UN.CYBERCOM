@@ -151,6 +151,20 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
              return ContractHandler.SendRequestAndWaitForReceiptAsync(acceptNewMemberFunction, cancellationToken);
         }
 
+        public Task<bool> DoesCouncilExistQueryAsync(DoesCouncilExistFunction doesCouncilExistFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<DoesCouncilExistFunction, bool>(doesCouncilExistFunction, blockParameter);
+        }
+
+        
+        public Task<bool> DoesCouncilExistQueryAsync(byte[] role, BlockParameter blockParameter = null)
+        {
+            var doesCouncilExistFunction = new DoesCouncilExistFunction();
+                doesCouncilExistFunction.Role = role;
+            
+            return ContractHandler.QueryAsync<DoesCouncilExistFunction, bool>(doesCouncilExistFunction, blockParameter);
+        }
+
         public Task<bool> DoesCouncilGroupExistQueryAsync(DoesCouncilGroupExistFunction doesCouncilGroupExistFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<DoesCouncilGroupExistFunction, bool>(doesCouncilGroupExistFunction, blockParameter);
@@ -314,6 +328,32 @@ namespace UN.CYBERCOM.Contracts.CouncilManager
                 removeNationFunction.NationId = nationId;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(removeNationFunction, cancellationToken);
+        }
+
+        public Task<string> UpdateVotingParametersRequestAsync(UpdateVotingParametersFunction updateVotingParametersFunction)
+        {
+             return ContractHandler.SendRequestAsync(updateVotingParametersFunction);
+        }
+
+        public Task<TransactionReceipt> UpdateVotingParametersRequestAndWaitForReceiptAsync(UpdateVotingParametersFunction updateVotingParametersFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(updateVotingParametersFunction, cancellationToken);
+        }
+
+        public Task<string> UpdateVotingParametersRequestAsync(string proposalAddress)
+        {
+            var updateVotingParametersFunction = new UpdateVotingParametersFunction();
+                updateVotingParametersFunction.ProposalAddress = proposalAddress;
+            
+             return ContractHandler.SendRequestAsync(updateVotingParametersFunction);
+        }
+
+        public Task<TransactionReceipt> UpdateVotingParametersRequestAndWaitForReceiptAsync(string proposalAddress, CancellationTokenSource cancellationToken = null)
+        {
+            var updateVotingParametersFunction = new UpdateVotingParametersFunction();
+                updateVotingParametersFunction.ProposalAddress = proposalAddress;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(updateVotingParametersFunction, cancellationToken);
         }
     }
 }

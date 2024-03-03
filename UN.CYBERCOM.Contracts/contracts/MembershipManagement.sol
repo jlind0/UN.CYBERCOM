@@ -11,6 +11,7 @@ library MembershipManagement {
         address proposalStorageAddress;
         address membershipRemovalAddress;
         address membershipManagerAddress;
+        address votingParametersManagerAddress;
     }
     struct MembershipProposalRequest {
         address member;
@@ -55,6 +56,26 @@ library MembershipManagement {
         uint sumDenominator;
         uint sumNumerator;
         bool avgVotes;
+    }
+    struct ChangeVotingParametersRole{
+        bytes32 council;
+        VotingParameters parameters;
+    }
+    struct ChangeVotingParametersRequest{
+        ChangeVotingParametersRole[] parameters;
+        uint duration;
+        address owner;
+    }
+    struct ChangeVotingParametersResponse{
+        uint id;
+        ChangeVotingParametersRole[] parameters;
+        Vote[] votes;
+        uint duration;
+        ApprovalStatus status;
+        bool isProcessing;
+        bool votingStarted;
+        address owner;
+        address proposalAddress;
     }
     struct MembershipProposalResponse{
         uint id;

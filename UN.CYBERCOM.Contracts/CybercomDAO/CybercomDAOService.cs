@@ -370,6 +370,32 @@ namespace UN.CYBERCOM.Contracts.CybercomDAO
              return ContractHandler.SendRequestAndWaitForReceiptAsync(startVotingFunction, cancellationToken);
         }
 
+        public Task<string> SubmitChangeVotingParametersRequestAsync(SubmitChangeVotingParametersFunction submitChangeVotingParametersFunction)
+        {
+             return ContractHandler.SendRequestAsync(submitChangeVotingParametersFunction);
+        }
+
+        public Task<TransactionReceipt> SubmitChangeVotingParametersRequestAndWaitForReceiptAsync(SubmitChangeVotingParametersFunction submitChangeVotingParametersFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(submitChangeVotingParametersFunction, cancellationToken);
+        }
+
+        public Task<string> SubmitChangeVotingParametersRequestAsync(ChangeVotingParametersRequest request)
+        {
+            var submitChangeVotingParametersFunction = new SubmitChangeVotingParametersFunction();
+                submitChangeVotingParametersFunction.Request = request;
+            
+             return ContractHandler.SendRequestAsync(submitChangeVotingParametersFunction);
+        }
+
+        public Task<TransactionReceipt> SubmitChangeVotingParametersRequestAndWaitForReceiptAsync(ChangeVotingParametersRequest request, CancellationTokenSource cancellationToken = null)
+        {
+            var submitChangeVotingParametersFunction = new SubmitChangeVotingParametersFunction();
+                submitChangeVotingParametersFunction.Request = request;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(submitChangeVotingParametersFunction, cancellationToken);
+        }
+
         public Task<string> SubmitMembershipProposalRequestAsync(SubmitMembershipProposalFunction submitMembershipProposalFunction)
         {
              return ContractHandler.SendRequestAsync(submitMembershipProposalFunction);

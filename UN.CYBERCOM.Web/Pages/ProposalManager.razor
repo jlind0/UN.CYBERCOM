@@ -1,0 +1,150 @@
+﻿@typeparam TProposal where TProposal : ProposalViewModel
+@typeparam TProposals where TProposals: ProposalsViewModel<TProposal>
+@using UN.CYBERCOM.ViewModels
+@using UN.CYBERCOM.Web.Helpers
+@using System.Threading;
+@inherits ReactiveComponentBase<TProposals>
+@if(ViewModel != null)
+{
+<h2>Entered Requests</h2>
+<TelerikGrid Data="ViewModel.EnteredProposals" Resizable="true">
+    <GridColumns>
+        <GridColumn Field="Id" Title="Id" />
+        @ExtraColumns
+            <GridColumn>
+            <Template>
+                    @if (((TProposal)context).CanStartVoting)
+                {
+                        <TelerikButton OnClick="((TProposal)context).StartVoting.BindCommand<MouseEventArgs>()">Start Voting</TelerikButton>
+                        <AddDocumentView ViewModel="((TProposal)context).AddDocumentVM" />
+
+
+                }
+                <ul>
+                        @foreach (var doc in ((TProposal)context).Documents)
+                    {
+                        <li>
+                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                            <p>Signature: @doc.Signature</p>
+                            <p>Signer: @doc.Signer</p>
+                            <p>Document Address: @doc.Address</p>
+                        </li>
+                    }
+                </ul>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</TelerikGrid>
+<h2>Pending Requests</h2>
+    <TelerikGrid Data="ViewModel.PendingProposals" Resizable="true">
+    <GridColumns>
+        <GridColumn Field="Id" Title="Id" />
+            @ExtraColumns
+        <GridColumn Field="Duration" Title="Voting Experation Date" />
+        <GridColumn>
+            <Template>
+                    @if (((TProposal)context).CanTally)
+                {
+                    <TelerikButton OnClick="((TProposal)context).Tally.BindCommand<MouseEventArgs>()">Tally</TelerikButton>
+                }
+                <ProposalVoteView ViewModel="(TProposal)context" />
+                <ul>
+                        @foreach (var doc in ((TProposal)context).Documents)
+                    {
+                        <li>
+                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                            <p>Signature: @doc.Signature</p>
+                            <p>Signer: @doc.Signer</p>
+                            <p>Document Address: @doc.Address</p>
+                        </li>
+                    }
+                </ul>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</TelerikGrid>
+<h2>Ready for Final Tally</h2>
+    <TelerikGrid Data="ViewModel.ReadyProposals" Resizable="true">
+    <GridColumns>
+        <GridColumn Field="Id" Title="Id" />
+            @ExtraColumns
+        <GridColumn Field="Duration" Title="Voting Experation Date" />
+        <GridColumn>
+            <Template>
+                    @if (((TProposal)context).CanCompleteTally)
+                {
+                        <TelerikButton OnClick="((TProposal)context).CompleteTally.BindCommand<MouseEventArgs>()">Complete</TelerikButton>
+                }
+                <ProposalVoteView ViewModel="(TProposal)context" />
+                <ul>
+                        @foreach (var doc in ((TProposal)context).Documents)
+                    {
+                        <li>
+                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                            <p>Signature: @doc.Signature</p>
+                            <p>Signer: @doc.Signer</p>
+                            <p>Document Address: @doc.Address</p>
+                        </li>
+                    }
+                </ul>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</TelerikGrid>
+<h2>Rejected</h2>
+    <TelerikGrid Data="ViewModel.RejectedProposals" Resizable="true">
+    <GridColumns>
+        <GridColumn Field="Id" Title="Id" />
+            @ExtraColumns
+        <GridColumn Field="Duration" Title="Voting Experation Date" />
+        <GridColumn>
+            <Template>
+                    <ProposalVoteView ViewModel="(TProposal)context" />
+                <ul>
+                        @foreach (var doc in ((TProposal)context).Documents)
+                    {
+                        <li>
+                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                            <p>Signature: @doc.Signature</p>
+                            <p>Signer: @doc.Signer</p>
+                            <p>Document Address: @doc.Address</p>
+                        </li>
+                    }
+                </ul>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</TelerikGrid>
+<h2>Approved</h2>
+    <TelerikGrid Data="ViewModel.ApprovedProposals" Resizable="true">
+    <GridColumns>
+        <GridColumn Field="Id" Title="Id" />
+        @ExtraColumns
+        <GridColumn Field="Duration" Title="Voting Experation Date" />
+        <GridColumn>
+            <Template>
+                    <ProposalVoteView ViewModel="(TProposal)context" />
+                <ul>
+                        @foreach (var doc in ((TProposal)context).Documents)
+                    {
+                        <li>
+                            <a href="@doc.Url" target="_blank">@doc.Title</a>
+                            <p>Document Hash: @doc.DocumentHash <TelerikButton OnClick="doc.VerifyDocumentHash.BindCommand<MouseEventArgs>()">Verify Hash</TelerikButton> Verified: @doc.DocumentHashIsValid</p>
+                            <p>Signature: @doc.Signature</p>
+                            <p>Signer: @doc.Signer</p>
+                            <p>Document Address: @doc.Address</p>
+                        </li>
+                    }
+                </ul>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</TelerikGrid>
+}
+@code {
+    [Parameter] public RenderFragment? ExtraColumns{ get; set; }
+}

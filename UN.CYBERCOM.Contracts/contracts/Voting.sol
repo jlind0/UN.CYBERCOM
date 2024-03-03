@@ -34,7 +34,7 @@ contract Voting is VRFConsumerBaseV2{
 
         if(msg.sender != daoAddress && 
             msg.sender != addresses.membershipManagerAddress && 
-            msg.sender != addresses.membershipRemovalAddress) revert Unauthorized();
+            msg.sender != addresses.membershipRemovalAddress && msg.sender != addresses.votingParametersManagerAddress ) revert Unauthorized();
         _;
     }
     error VotingNotClosed();

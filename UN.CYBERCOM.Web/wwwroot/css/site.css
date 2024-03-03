@@ -1,5 +1,9 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
-
+.custom-header {
+    white-space: normal !important;
+    height: auto; /* Adjust based on your requirement */
+    line-height: 1.5; /* Example value, adjust as needed */
+}
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }

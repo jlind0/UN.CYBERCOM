@@ -81,7 +81,15 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
         MembershipRemovalManager manager = MembershipRemovalManager(contracts.membershipRemovalAddress);
         return manager.submitProposal(request);
     }
-    
+    function submitChangeVotingParameters(MembershipManagement.ChangeVotingParametersRequest memory request)
+        isMember() external returns(address){
+        if(request.duration < MIN_VOTE_DURATION){
+            request.duration = MIN_VOTE_DURATION;
+        }
+        request.owner = msg.sender;
+        VotingParametersManager manager = VotingParametersManager(contracts.votingParametersManagerAddress);
+        return manager.submitProposal(request);
+    }
     function performVote(uint proposalId, bool voteCast) isMember() external{
          ProposalStorageManager memberManager = ProposalStorageManager(contracts.proposalStorageAddress);
          address propId = memberManager.getProposal(proposalId);
@@ -118,6 +126,10 @@ contract CybercomDAO is ReentrancyGuard, AccessControl{
             }
             else if(proposal.proposalType() == MembershipManagement.ProposalTypes.MembershipRemoval){
                 removeMember(propId);
+            }
+            else if(proposal.proposalType() == MembershipManagement.ProposalTypes.UpdateVotingParameters){
+                CouncilManager councilManager = CouncilManager(contracts.councilManagementAddress);
+                councilManager.updateVotingParameters(propId);
             }
         }
         else if(status == MembershipManagement.ApprovalStatus.Rejected){

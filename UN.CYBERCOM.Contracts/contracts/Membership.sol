@@ -6,6 +6,86 @@ import "./Proposal.sol";
 import "./Voting.sol";
 import "./CouncilManager.sol";
 import "./CybercomDAO.sol";
+contract VotingParametersManager{
+    address votingAddress;
+    address councilManagementAddress;
+    address proposalStorageAddress;
+    address daoAddress;
+    modifier isFromDAO(){
+        if(msg.sender != votingAddress && msg.sender != councilManagementAddress && msg.sender != daoAddress)
+            revert Utils.AuthorizationError();
+        _;
+    }
+    constructor(address _votingAddress, address _councilManagementAddress, address _proposalStorageAddress, address _daoAddress){
+        votingAddress = _votingAddress;
+        councilManagementAddress = _councilManagementAddress;
+        proposalStorageAddress = _proposalStorageAddress;
+        daoAddress = _daoAddress;
+    }
+     function getRequests(MembershipManagement.ApprovalStatus status) 
+        external view returns(MembershipManagement.ChangeVotingParametersResponse[] memory)
+    {
+        ProposalStorageManager memberManager = ProposalStorageManager(proposalStorageAddress);
+        address[] memory propAddresses = memberManager.getChangeParametersProposalAddresses();
+        ChangeVotingParametersProposal[] memory props = new ChangeVotingParametersProposal[](propAddresses.length);
+            uint i = 0;
+            uint j = 0;
+            while(i < propAddresses.length){
+                ChangeVotingParametersProposal mp = ChangeVotingParametersProposal(propAddresses[i]);
+                if(mp.status() == status)
+                {
+                    props[j] = mp;
+                    j++;
+                }
+                i++;
+            }
+            MembershipManagement.ChangeVotingParametersResponse[] memory rtn = new MembershipManagement.ChangeVotingParametersResponse[](j);
+            i = 0;
+            while(i < j){
+                rtn[i] = getResponse(props[i]);
+                i++;
+            }
+            return rtn;
+    }
+    function getResponse(ChangeVotingParametersProposal prop)
+        private view returns(MembershipManagement.ChangeVotingParametersResponse memory)
+    {
+        return prop.getChangeResponse();
+    }
+    function submitProposal(MembershipManagement.ChangeVotingParametersRequest memory request) public isFromDAO() returns(address){
+        return constructChangeParameterProposal(request);
+    }
+    error CouncilDoesNotExist();
+    function constructChangeParameterProposal(MembershipManagement.ChangeVotingParametersRequest memory request)
+        private returns(address)
+    {
+        CouncilManager manager = CouncilManager(councilManagementAddress);
+        uint i = 0;
+        while(i < request.parameters.length){
+            if(!manager.doesCouncilExist(request.parameters[i].council))
+                revert CouncilDoesNotExist();
+            i++;
+        }
+        
+        ProposalStorageManager memberManager = ProposalStorageManager(proposalStorageAddress);
+        CybercomDAO dao = CybercomDAO(daoAddress);
+        ChangeVotingParametersProposal prop = new ChangeVotingParametersProposal(request.owner,
+           dao.getContractAddresses(), 
+            memberManager.getNextProposalId(),
+            request.duration,
+            request.parameters
+        );
+        Voting v = Voting(votingAddress);
+        address propAddress = address(prop);
+        v.addProposal(propAddress);
+        
+        memberManager.setProposal(prop.id(), propAddress);
+        memberManager.addChangeParametersProposal(propAddress);
+        emit Utils.ProposalCreated(prop.id(), propAddress);
+        return propAddress;
+    }
+               
+}
 contract MembershipRemovalManager{
     address votingAddress;
     address councilManagementAddress;
@@ -92,10 +172,9 @@ contract MembershipRemovalManager{
         memberManager.setMembershipRemovalProposal(request.nationToRemove, propAddress);
         memberManager.setProposal(prop.id(), propAddress);
         memberManager.addMembershipRemovalProposal(propAddress);
-        emit ProposalCreated(prop.id(), propAddress);
+        emit Utils.ProposalCreated(prop.id(), propAddress);
         return propAddress;
-    }
-    event ProposalCreated(uint indexed proposalId, address proposalAddress);            
+    }          
 }
 contract MembershipManager{
     address votingAddress;

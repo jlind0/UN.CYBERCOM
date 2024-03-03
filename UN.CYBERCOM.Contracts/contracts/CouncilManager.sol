@@ -251,10 +251,34 @@ contract CouncilManager{
         }
         return cvs;
     }
+    function updateVotingParameters(address proposalAddress) isFromDAO() public{
+        ChangeVotingParametersProposal prop = ChangeVotingParametersProposal(proposalAddress);
+        MembershipManagement.ChangeVotingParametersResponse memory changeSet = prop.getChangeResponse();
+        uint i = 0;
+        while(i < changeSet.parameters.length){
+            MembershipManagement.ChangeVotingParametersRole memory role = changeSet.parameters[i];
+            MembershipManagement.Council storage council = councils[role.council];
+            if(council.groups.length == 0)
+                revert LogicError();
+            council.votingParameters.avgVotes = role.parameters.avgVotes;
+            council.votingParameters.outputCountForGroup = role.parameters.outputCountForGroup;
+            council.votingParameters.outputCountForMember = role.parameters.outputCountForMember;
+            council.votingParameters.randomizeByGroup = role.parameters.randomizeByGroup;
+            council.votingParameters.randomizeByMember = role.parameters.randomizeByMember;
+            council.votingParameters.sumDenominator = role.parameters.sumDenominator;
+            council.votingParameters.sumNumerator = role.parameters.sumNumerator;
+            council.votingParameters.voteDenominator = role.parameters.voteDenominator;
+            council.votingParameters.voteNumerator = role.parameters.voteNumerator;
+            i++;
+        }
+    }
     function getCouncil(bytes32 role) 
         public view returns (MembershipManagement.Council memory)
     {
         return councils[role];
+    }
+    function doesCouncilExist(bytes32 role) public view returns(bool){
+        return councils[role].groups.length > 0;
     }
     function getCouncilRoleForGroup(uint groupId) public view returns(bytes32){
         return councilGroups[groupId];
